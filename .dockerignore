@@ -1,0 +1,11 @@
+.next
+node_modules
+out
+.git
+.gitignore
+.env*.local
+*.db
+*.db-journal
+Dockerfile
+.gitlab-ci.yml
+README.md

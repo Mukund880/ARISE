@@ -1,0 +1,20 @@
+stages:
+  - deploy
+
+deploy_to_cloud_run:
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  only:
+    - main
+  before_script:
+    # Authenticate with Google Cloud using the Service Account Key JSON variable
+    - echo "$GCP_SERVICE_KEY" > gcp-key.json
+    - gcloud auth activate-service-account --key-file=gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+  script:
+    # Submit build to Google Cloud Build
+    - gcloud builds submit --tag gcr.io/$GCP_PROJECT_ID/arise-app:$CI_COMMIT_SHA
+    # Deploy to Google Cloud Run
+    - gcloud run deploy arise-app --image gcr.io/$GCP_PROJECT_ID/arise-app:$CI_COMMIT_SHA --platform managed --region us-central1 --allow-unauthenticated
+  after_script:
+    - rm -f gcp-key.json
