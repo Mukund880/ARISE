@@ -29,8 +29,24 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy on Google Cloud Run
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To deploy this application to Google Cloud Run:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Build and Trigger**: Pushing to the `main` branch on GitHub automatically triggers a build in Google Cloud Build which builds the standalone Docker container and deploys it.
+2. **Environment Variables**: Make sure to configure the following environment variables in your Cloud Run service configuration (*Edit & Deploy New Revision > Variables & Secrets*):
+
+   | Variable Name | Description / Value |
+   | --- | --- |
+   | `GEMINI_API_KEY` | Your Google Gemini API Key |
+   | `PINECONE_API_KEY` | Your Pinecone database API Key |
+   | `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase API Key |
+   | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain |
+   | `NEXT_PUBLIC_FIREBASE_DATABASE_URL` | Firebase Database URL |
+   | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase Project ID |
+   | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket |
+   | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Messaging Sender ID |
+   | `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase App ID |
+   | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | Firebase Measurement ID |
+   | `DATABASE_URL` | Prisma SQLite database url (e.g. `file:./dev.db`) |
+
