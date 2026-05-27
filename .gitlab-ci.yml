@@ -14,7 +14,14 @@ deploy_to_cloud_run:
   script:
     # Submit build to Google Cloud Build
     - gcloud builds submit --tag gcr.io/$GCP_PROJECT_ID/arise-app:$CI_COMMIT_SHA
-    # Deploy to Google Cloud Run
-    - gcloud run deploy arise-app --image gcr.io/$GCP_PROJECT_ID/arise-app:$CI_COMMIT_SHA --platform managed --region us-central1 --allow-unauthenticated
+    # Deploy to Google Cloud Run, capturing the URL
+    - CLOUD_RUN_URL=$(gcloud run deploy arise-app --image gcr.io/$GCP_PROJECT_ID/arise-app:$CI_COMMIT_SHA --platform managed --region us-central1 --allow-unauthenticated --format="value(status.url)")
+    - echo "CLOUD_RUN_URL=$CLOUD_RUN_URL" > deploy.env
   after_script:
     - rm -f gcp-key.json
+  artifacts:
+    reports:
+      dotenv: deploy.env
+  environment:
+    name: production
+    url: $CLOUD_RUN_URL
