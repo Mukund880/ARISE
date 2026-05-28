@@ -47,6 +47,30 @@ export class AIService {
 
   async generatePersonalizedRoadmap(topic: string, knowledgeLevel: string, goal: string, topicId?: string) {
     let contextStr = "";
+    
+    // Only use cache for generic requests (no custom topicId/RAG)
+    const canCache = !topicId;
+    let cacheKey = "";
+    let cacheRef: any = null;
+    
+    if (canCache) {
+      const { db } = await import('@/lib/firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      
+      // Create a deterministic cache key based on inputs
+      cacheKey = `roadmap_${topic.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}_${knowledgeLevel.toLowerCase().trim()}_${goal.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}`;
+      cacheRef = doc(db, 'roadmap_cache', cacheKey);
+      
+      try {
+        const cacheSnap = await getDoc(cacheRef);
+        if (cacheSnap.exists()) {
+          console.log(`[Cache Hit] Returning existing roadmap for key: ${cacheKey}`);
+          return cacheSnap.data().roadmap;
+        }
+      } catch (e) {
+        console.warn("Failed to read from roadmap cache", e);
+      }
+    }
 
     if (topicId) {
       try {
@@ -102,7 +126,25 @@ export class AIService {
         if (text.startsWith("```")) text = text.slice(3);
         if (text.endsWith("```")) text = text.slice(0, -3);
         
-        return JSON.parse(text.trim());
+        const parsedRoadmap = JSON.parse(text.trim());
+
+        if (canCache && cacheRef) {
+          try {
+            const { setDoc } = await import('firebase/firestore');
+            await setDoc(cacheRef, { 
+              topic,
+              knowledgeLevel,
+              goal,
+              roadmap: parsedRoadmap,
+              createdAt: new Date().toISOString()
+            });
+            console.log(`[Cache Miss] Saved new roadmap to cache: ${cacheKey}`);
+          } catch (e) {
+            console.warn("Failed to write to roadmap cache", e);
+          }
+        }
+
+        return parsedRoadmap;
       } catch (error: any) {
         console.warn(`Roadmap generation failed with model ${modelName}:`, error.message || error);
         lastError = error;
