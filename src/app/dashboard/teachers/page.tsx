@@ -103,9 +103,10 @@ export default function TeachersPage() {
   }
 
   // Block access if user is not on a paid tier
-  if (!isPaidUser(userProfile?.subscriptionTier)) {
-    return <TeachersPaywall />;
-  }
+  // TODO: Remove this bypass once ready for production
+  // if (!isPaidUser(userProfile?.subscriptionTier)) {
+  //   return <TeachersPaywall />;
+  // }
 
   return (
     <motion.div
@@ -121,7 +122,7 @@ export default function TeachersPage() {
             <GraduationCap className="text-primary w-6 h-6" />
             Instructor Portal &amp; Classrooms
           </h1>
-          <p className="text-muted-foreground text-xs mt-1">Manage your classrooms, assign custom roadmaps, and trace student learning aggregates in real time.</p>
+          <p className="text-muted-foreground text-xs mt-1">Create classroom squads and manage students. Students in your classroom will be able to join squads you create.</p>
         </div>
         <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider rounded-md h-11 px-6 cursor-pointer">
           Create Classroom Squad
@@ -173,10 +174,10 @@ export default function TeachersPage() {
 
               <div className="flex gap-4 pt-6">
                 <Button variant="outline" className="flex-1 border-border text-foreground hover:bg-secondary/15 h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
-                  View Student List
+                  Manage Students
                 </Button>
                 <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
-                  Assign AI Roadmap
+                  Squad Settings
                 </Button>
               </div>
             </Card>
@@ -186,6 +187,21 @@ export default function TeachersPage() {
 
       {/* Teachers Resource Card */}
       <Card className="p-6 border-border bg-card rounded-lg relative overflow-hidden shadow-sm flex flex-col sm:flex-row items-center gap-6 justify-between mt-8">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg text-primary shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-xs font-mono uppercase tracking-widest text-primary font-bold">How Students Join Squads</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-xl">
+              When you create a classroom squad, all students in your classroom automatically gain the ability to join it. Students will see your squad in their "Study Squads" page and can opt in to join. They can only join squads created by their teachers.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Classroom syllabus generation Card */}
+      <Card className="p-6 border-border bg-card rounded-lg relative overflow-hidden shadow-sm flex flex-col sm:flex-row items-center gap-6 justify-between">
         <div className="flex items-start gap-4">
           <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg text-primary shrink-0">
             <Sparkles className="w-5 h-5" />
