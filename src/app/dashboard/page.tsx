@@ -37,7 +37,7 @@ export default function DashboardPage() {
         const topicsCol = collection(db, "users", user.uid, "topics");
         const q = query(topicsCol, orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
-        const list = snap.docs.map((doc) => doc.data());
+        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setTopics(list);
       } catch (err) {
         console.error("Error fetching topics:", err);
