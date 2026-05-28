@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
 import { useRive, useStateMachineInput } from "@rive-app/react-canvas";
 import { useMascot } from "@/context/MascotContext";
+import { ArisMascotCanvas } from "./3d/ArisMascotCanvas";
+
 
 interface AriseMascotProps {
   state?: "idle" | "happy" | "thinking" | "success" | "excited" | "wave" | "proud" | "sleep" | "reflect" | "cheer" | "focused" | "confused";
@@ -279,56 +281,15 @@ export function AriseMascot({
     );
   }
 
-  // Fallback rendering
+  // Use the new WebGL 3D Canvas as the main visual engine
   return (
-    <div
-      className={`relative flex flex-col items-center justify-center select-none ${
-        interactive ? "cursor-pointer active:scale-[0.97] transition-all duration-300 hover:brightness-[1.02]" : ""
-      }`}
-      style={{ width: size, height: size * 1.15 }}
-      onClick={handleMascotClick}
-    >
-      {/* Volumetric shadow halo */}
-      <motion.div
-        animate={{
-          opacity: currentFBState === "sleep" ? [0.12, 0.22, 0.12] : [0.18, 0.32, 0.18],
-          scale: currentFBState === "sleep" ? [0.95, 1.03, 0.95] : [1, 1.08, 1],
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: currentFBState === "sleep" ? baseDuration * 1.3 : baseDuration,
-          ease: "easeInOut",
-        }}
-        className={`absolute w-[80%] h-[80%] rounded-full blur-[25px] ${
-          currentFBState === "sleep" ? "bg-amber-500/15" : "bg-indigo-500/15"
-        }`}
-        style={{ top: "15%", zIndex: 0 }}
-      />
-
-      {/* Main Mascot 3D Image View */}
-      <motion.img
-        src={`/assets/${getImageForState(currentFBState)}`}
-        alt="Aris Mascot"
-        variants={bodyFloatVariants}
-        animate="animate"
-        className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(99,102,241,0.22)]"
-        style={{ zIndex: 1 }}
-      />
-
-      {/* Volumetric Floating Base Shadow */}
-      <motion.div
-        animate={{
-          scale: currentFBState === "sleep" ? [0.85, 0.95, 0.85] : [0.8, 1.05, 0.8],
-          opacity: currentFBState === "sleep" ? [0.12, 0.22, 0.12] : [0.18, 0.35, 0.18],
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: currentFBState === "sleep" ? baseDuration * 1.3 : baseDuration,
-          ease: "easeInOut",
-        }}
-        className="w-14 h-1.5 bg-slate-900/10 rounded-full blur-[3px] mt-1"
-        style={{ zIndex: 0 }}
-      />
-    </div>
+    <ArisMascotCanvas
+      state={currentFBState}
+      cheeks={cheeks}
+      energy={energy}
+      leaf={leaf}
+      size={size}
+      interactive={interactive}
+    />
   );
 }
