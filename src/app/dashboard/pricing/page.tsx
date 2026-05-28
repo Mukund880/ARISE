@@ -3,11 +3,21 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Check, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useState } from "react";
+
+// Utility to load Razorpay script dynamically
+const loadScript = (src: string) => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export default function PricingPage() {
   const { user, userProfile } = useAuth();
@@ -73,22 +83,102 @@ export default function PricingPage() {
 
   async function handleUpgrade(tier: any) {
     if (!user) return alert("Please log in first.");
-    if (tier.isTeacherTier) {
+    
+    // Polymath or Guild Master
+    if (tier.name !== "Scholar") {
       setUpgrading(true);
+      
+      const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+      if (!res) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        setUpgrading(false);
+        return;
+      }
+
       try {
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, { role: "teacher" });
-        alert("Success! Your account has been upgraded to a Teacher/Educator account. The 'For Teachers' tab is now unlocked.");
-        // Force refresh
-        window.location.reload();
+        // Parse price from string (e.g. "$49" -> 49)
+        const priceNum = parseInt(tier.price.replace(/[^0-9]/g, ''));
+        
+        // 1. Create order on our backend
+        const orderRes = await fetch("/api/razorpay/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: priceNum, currency: "INR" }) // using INR for test accounts usually
+        });
+        const orderData = await orderRes.json();
+
+        if (!orderData.success) {
+          throw new Error("Failed to create order");
+        }
+
+        // 2. Open Razorpay Checkout Modal
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+          amount: orderData.order.amount,
+          currency: orderData.order.currency,
+          name: "Arise AI",
+          description: `Subscription to ${tier.name} Plan`,
+          order_id: orderData.order.id,
+          handler: async function (response: any) {
+            try {
+              // 3. Verify Payment Signature
+              const verifyRes = await fetch("/api/razorpay/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                })
+              });
+              const verifyData = await verifyRes.json();
+
+              if (verifyData.success) {
+                // 4. Payment Verified! Upgrade the user account!
+                const userRef = doc(db, "users", user.uid);
+                // If it's Guild Master, they are a teacher. Otherwise just normal premium student.
+                const newRole = tier.isTeacherTier ? "teacher" : "student";
+                
+                await updateDoc(userRef, { 
+                  role: newRole,
+                  tier: tier.name.toLowerCase()
+                });
+                
+                alert(`Success! Welcome to the ${tier.name} tier!`);
+                window.location.reload();
+              } else {
+                alert("Payment verification failed.");
+              }
+            } catch (err) {
+              console.error("Verification error:", err);
+              alert("Payment verification error.");
+            } finally {
+              setUpgrading(false);
+            }
+          },
+          prefill: {
+            name: user.displayName || "Student",
+            email: user.email || "",
+          },
+          theme: {
+            color: "#c5a880", // using primary color
+          },
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.on("payment.failed", function (response: any) {
+          alert("Payment failed or cancelled.");
+          setUpgrading(false);
+        });
+        paymentObject.open();
+
       } catch (error) {
-        console.error("Upgrade error:", error);
-        alert("Failed to process upgrade.");
-      } finally {
+        console.error("Razorpay error:", error);
+        alert("Failed to initiate payment.");
         setUpgrading(false);
       }
     } else {
-      alert("This is just a mock tier for demonstration.");
+      alert("You are already on the Free tier.");
     }
   }
 
@@ -145,7 +235,7 @@ export default function PricingPage() {
             <div className="pt-8">
               <Button 
                 onClick={() => handleUpgrade(tier)}
-                disabled={tier.active || (upgrading && tier.isTeacherTier)}
+                disabled={tier.active || upgrading}
                 className={`w-full h-11 text-xs font-mono uppercase tracking-widest rounded-md transition-all cursor-pointer ${
                   tier.active 
                     ? "bg-secondary/15 border border-border text-muted-foreground cursor-not-allowed" 
@@ -154,7 +244,7 @@ export default function PricingPage() {
                       : "bg-card border border-border hover:bg-secondary/15 text-foreground"
                 }`}
               >
-                {upgrading && tier.isTeacherTier ? "Processing..." : tier.cta}
+                {upgrading && tier.name !== "Scholar" ? "Processing..." : tier.cta}
               </Button>
             </div>
           </Card>
