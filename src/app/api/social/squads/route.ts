@@ -16,15 +16,15 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { userId, squadId } = await req.json();
-    if (!userId || !squadId) {
-      return NextResponse.json({ error: 'Missing userId or squadId' }, { status: 400 });
+    const { userId, inviteCode } = await req.json();
+    if (!userId || !inviteCode) {
+      return NextResponse.json({ error: 'Missing userId or inviteCode' }, { status: 400 });
     }
-    const updatedUser = await SocialService.joinSquad(userId, squadId);
+    const updatedUser = await SocialService.joinSquad(userId, inviteCode);
     return NextResponse.json(updatedUser);
-  } catch (error) {
+  } catch (error: any) {
     console.error('API Route Error (join squad):', error);
-    return NextResponse.json({ error: 'Failed to join squad' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to join squad' }, { status: 500 });
   }
 }
 

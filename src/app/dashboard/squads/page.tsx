@@ -14,6 +14,8 @@ export default function SquadsPage() {
   const [squads, setSquads] = useState<any[]>([]);
   const [joinedSquadId, setJoinedSquadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     if (userProfile?.squadId) setJoinedSquadId(userProfile.squadId);
@@ -38,6 +40,30 @@ export default function SquadsPage() {
     }
     if (user) fetchSquads();
   }, [user, joinedSquadId]);
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || !inviteCode) return;
+    setJoining(true);
+    try {
+      const res = await fetch("/api/social/squads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid, inviteCode })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to join squad");
+      
+      alert("Successfully joined classroom squad!");
+      setJoinedSquadId(data.squadId);
+      setInviteCode("");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Invalid invite code.");
+    } finally {
+      setJoining(false);
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
@@ -64,6 +90,25 @@ export default function SquadsPage() {
           </div>
         </div>
       </div>
+
+      {/* Join Squad Section */}
+      {!joinedSquadId && (
+        <Card className="p-6 border-border bg-card rounded-lg shadow-sm">
+          <h2 className="text-sm font-bold tracking-widest uppercase text-foreground mb-4">Join a Classroom</h2>
+          <form onSubmit={handleJoin} className="flex gap-4 max-w-md">
+            <input 
+              required
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              placeholder="ENTER INVITE CODE (e.g. AI-101)"
+              className="flex-1 bg-secondary/20 border border-border rounded-md px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
+            />
+            <Button disabled={joining} type="submit" className="h-[46px] px-6 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest shrink-0">
+              {joining ? "Joining..." : "Join"}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

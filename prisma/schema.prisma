@@ -35,6 +35,7 @@ model Squad {
   id          String   @id @default(uuid())
   name        String
   desc        String
+  inviteCode  String   @unique
   totalXp     Int      @default(0)
   createdAt   DateTime @default(now())
   

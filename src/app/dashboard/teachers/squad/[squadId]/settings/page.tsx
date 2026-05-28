@@ -92,6 +92,15 @@ export default function SquadSettingsPage() {
       <Card className="p-8 border-border bg-card rounded-lg shadow-sm">
         <form onSubmit={handleUpdate} className="space-y-6">
           <div className="space-y-2">
+            <label className="text-xs font-mono tracking-widest uppercase text-muted-foreground flex items-center justify-between">
+              <span>Invite Code</span>
+              <span className="text-[10px] text-primary">Share this with students</span>
+            </label>
+            <div className="w-full bg-secondary/10 border border-border/50 rounded-md px-4 py-3 text-sm font-bold tracking-widest text-primary font-mono select-all">
+              {squad.inviteCode}
+            </div>
+          </div>
+          <div className="space-y-2">
             <label className="text-xs font-mono tracking-widest uppercase text-muted-foreground">Classroom Name</label>
             <input 
               required

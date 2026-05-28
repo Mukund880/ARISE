@@ -146,7 +146,9 @@ export default function TeachersPage() {
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
                         <h3 className="text-sm sm:text-md font-bold text-foreground truncate">{squad.name}</h3>
-                        <p className="text-[9px] text-muted-foreground tracking-wider uppercase font-semibold mt-1">XP: {squad.totalXp?.toLocaleString() || 0}</p>
+                        <p className="text-[9px] text-muted-foreground tracking-wider uppercase font-semibold mt-1">
+                          XP: {squad.totalXp?.toLocaleString() || 0} • CODE: <span className="text-primary font-bold">{squad.inviteCode}</span>
+                        </p>
                       </div>
                       <span className="text-[8px] sm:text-[9px] font-mono tracking-wider font-bold text-primary px-2 py-0.5 rounded border border-primary/20 bg-primary/5 uppercase shrink-0 whitespace-nowrap">
                         {memberCount} MB
