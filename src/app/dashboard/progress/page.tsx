@@ -60,22 +60,22 @@ export default function ProgressPage() {
   const maxMins = Math.max(...studyData.map(d => d.mins), 60) || 60;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 pb-12">
       {/* Header Panel */}
       <div>
-        <h1 className="text-xl font-bold tracking-wider text-foreground uppercase flex items-center gap-3">
-          <TrendingUp className="text-primary w-6 h-6" />
-          My Progress & Analytics
+        <h1 className="text-lg sm:text-xl font-bold tracking-wider text-foreground uppercase flex items-center gap-2 sm:gap-3">
+          <TrendingUp className="text-primary w-5 sm:w-6 h-5 sm:h-6" />
+          My Progress
         </h1>
-        <p className="text-muted-foreground text-xs mt-1">Review your real-time learning metrics, study hours, and knowledge retention metrics.</p>
+        <p className="text-muted-foreground text-xs mt-1">Your real-time learning metrics and study data.</p>
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <OverviewStatCard icon={<Clock className="w-4 h-4 text-primary" />} label="TOTAL STUDY TIME" value={`${studyTime} MINS`} desc="Focused study time logged" />
-        <OverviewStatCard icon={<Trophy className="w-4 h-4 text-primary" />} label="XP ACCUMULATED" value={`${xp.toLocaleString()} XP`} desc="Total points earned" />
-        <OverviewStatCard icon={<Target className="w-4 h-4 text-primary" />} label="QUIZ ACCURACY" value={`${accuracy}%`} desc="Average correct responses" />
-        <OverviewStatCard icon={<Award className="w-4 h-4 text-primary" />} label="CURRENT LEVEL" value={`LEVEL ${level}`} desc={`Rank: ${rank}`} />
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <OverviewStatCard icon={<Clock className="w-4 h-4 text-primary" />} label="STUDY TIME" value={`${studyTime} MIN`} desc="focused" />
+        <OverviewStatCard icon={<Trophy className="w-4 h-4 text-primary" />} label="XP" value={`${(xp / 1000).toFixed(1)}K`} desc="earned" />
+        <OverviewStatCard icon={<Target className="w-4 h-4 text-primary" />} label="ACCURACY" value={`${accuracy}%`} desc="avg" />
+        <OverviewStatCard icon={<Award className="w-4 h-4 text-primary" />} label="LEVEL" value={`${level}`} desc={rank} />
       </div>
 
       {/* Charts Grid */}

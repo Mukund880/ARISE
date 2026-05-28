@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ARISE | Premium AI Learning Ecosystem",
   description: "An adaptive, AI-powered learning ecosystem.",
+  viewport: "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes",
 };
 
 export default function RootLayout({
