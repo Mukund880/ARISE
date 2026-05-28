@@ -17,8 +17,15 @@ const navItems = [
   { icon: TrendingUp,      label: "My Progress",    href: "/dashboard/progress" },
   { icon: Users,           label: "Squads",         href: "/dashboard/squads" },
   { icon: CreditCard,      label: "Pricing",        href: "/dashboard/pricing" },
-  { icon: GraduationCap,   label: "For Teachers",   href: "/dashboard/teachers" },
 ];
+
+const getNavItems = (role?: string) => {
+  const items = [...navItems];
+  if (role === "teacher") {
+    items.push({ icon: GraduationCap,   label: "For Teachers",   href: "/dashboard/teachers" });
+  }
+  return items;
+};
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -85,7 +92,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         {/* ── Nav items ─────────────────────────────────────────────── */}
         <nav className="flex-1 px-2 mt-6 space-y-0.5 overflow-hidden">
-          {navItems.map((item) => {
+          {getNavItems(userProfile?.role).map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
