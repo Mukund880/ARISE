@@ -9,78 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const PAID_TIERS = ["polymath", "guild_master", "guildmaster", "guild master"];
 
-function isPaidUser(subscriptionTier?: string): boolean {
-  if (!subscriptionTier) return false;
-  return PAID_TIERS.includes(subscriptionTier.toLowerCase().trim());
-}
-
-function TeachersPaywall() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 px-4"
-    >
-      {/* Lock Icon */}
-      <div className="relative">
-        <div className="w-20 h-20 rounded-full bg-primary/8 border border-primary/20 flex items-center justify-center mx-auto">
-          <Lock className="w-9 h-9 text-primary/70" />
-        </div>
-        {/* Glow */}
-        <div className="absolute inset-0 w-20 h-20 rounded-full bg-primary/10 blur-2xl mx-auto pointer-events-none" />
-      </div>
-
-      {/* Headline */}
-      <div className="space-y-3">
-        <span className="text-[10px] font-mono tracking-widest text-primary font-bold uppercase">Premium Feature</span>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Instructor Portal is a<br />Subscription-Only Feature
-        </h1>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
-          The Instructor Portal — including classroom management, squad analytics, AI syllabus generation, and student roadmap assignment — is exclusively available to <strong className="text-foreground">Polymath</strong> and <strong className="text-foreground">Guild Master</strong> members.
-        </p>
-      </div>
-
-      {/* Feature bullets */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left max-w-lg">
-        {[
-          { icon: <Users className="w-3.5 h-3.5" />, label: "Manage class squads & students" },
-          { icon: <Brain className="w-3.5 h-3.5" />, label: "Assign custom AI roadmaps" },
-          { icon: <Sparkles className="w-3.5 h-3.5" />, label: "AI syllabus generation" },
-          { icon: <UserCheck className="w-3.5 h-3.5" />, label: "Real-time student analytics" },
-        ].map(({ icon, label }) => (
-          <div key={label} className="flex items-center gap-2.5 text-xs text-muted-foreground p-3 rounded-lg border border-border bg-card">
-            <span className="text-primary shrink-0">{icon}</span>
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* CTA buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-        <Link href="/dashboard/pricing" className="flex-1">
-          <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-widest rounded-md cursor-pointer gap-2">
-            <Crown className="w-3.5 h-3.5" />
-            View Subscription Plans
-          </Button>
-        </Link>
-        <Link href="/dashboard" className="flex-1">
-          <Button variant="outline" className="w-full h-11 border-border text-foreground hover:bg-secondary/15 font-mono text-xs uppercase tracking-widest rounded-md cursor-pointer">
-            Back to Dashboard
-          </Button>
-        </Link>
-      </div>
-
-      {/* Fine print */}
-      <p className="text-[10px] text-muted-foreground font-mono tracking-wider">
-        Already subscribed? Your access will be reflected automatically after your plan activates.
-      </p>
-    </motion.div>
-  );
-}
 
 export default function TeachersPage() {
   const { userProfile, loading, user } = useAuth();
@@ -98,11 +27,10 @@ export default function TeachersPage() {
     async function fetchTeacherSquads() {
       if (!user) return;
       try {
-        const res = await fetch("/api/social/squads");
+        const res = await fetch(`/api/social/squads?ownerId=${user.uid}`);
         if (!res.ok) throw new Error("Failed to fetch squads");
         const allSquads = await res.json();
         
-        // Filter to squads created by teacher (for now, show all - backend should handle teacher ownership)
         setSquads(allSquads);
 
         // Calculate real-time stats
@@ -115,9 +43,11 @@ export default function TeachersPage() {
           const memberCount = squad._count?.members || 0;
           totalStudents += memberCount;
           
-          // Calculate average accuracy from members (placeholder - should come from actual data)
+          // Calculate average accuracy from members
           if (squad.members && squad.members.length > 0) {
-            const squadAccuracy = Math.random() * 20 + 75; // Will be replaced with real data
+            let memberAccuracySum = 0;
+            squad.members.forEach((m: any) => memberAccuracySum += (m.quizAccuracy || 80));
+            const squadAccuracy = memberAccuracySum / squad.members.length;
             totalAccuracy += squadAccuracy;
             accuracyCount++;
           }
@@ -159,11 +89,7 @@ export default function TeachersPage() {
     );
   }
 
-  // Block access if user is not on a paid tier
-  // TODO: Remove this bypass once ready for production
-  // if (!isPaidUser(userProfile?.subscriptionTier)) {
-  //   return <TeachersPaywall />;
-  // }
+
 
   return (
     <motion.div
@@ -181,9 +107,11 @@ export default function TeachersPage() {
           </h1>
           <p className="text-muted-foreground text-xs mt-1">Create classroom squads and manage students. Students in your classroom will be able to join squads you create.</p>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider rounded-md h-11 px-6 cursor-pointer">
-          Create Classroom Squad
-        </Button>
+        <Link href="/dashboard/teachers/create-squad">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider rounded-md h-11 px-6 cursor-pointer">
+            Create Classroom Squad
+          </Button>
+        </Link>
       </div>
 
       {/* Classroom Analytics Summary */}
@@ -205,8 +133,9 @@ export default function TeachersPage() {
             </div>
           ) : (
             squads.map((squad) => {
-              const memberCount = squad._count?.members || 0;
-              const accuracyPercent = Math.round(Math.random() * 20 + 75); // Will be replaced with real data
+              const accuracyPercent = squad.members?.length > 0 
+                ? Math.round(squad.members.reduce((acc: number, m: any) => acc + (m.quizAccuracy || 80), 0) / squad.members.length)
+                : 0;
               
               return (
                 <Card key={squad.id} className="p-6 border border-border bg-card rounded-lg relative overflow-hidden shadow-sm flex flex-col justify-between">
@@ -240,12 +169,16 @@ export default function TeachersPage() {
                   </div>
 
                   <div className="flex gap-4 pt-6">
-                    <Button variant="outline" className="flex-1 border-border text-foreground hover:bg-secondary/15 h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
-                      Manage Students
-                    </Button>
-                    <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
-                      Squad Settings
-                    </Button>
+                    <Link href={`/dashboard/teachers/squad/${squad.id}/students`} className="flex-1">
+                      <Button variant="outline" className="w-full border-border text-foreground hover:bg-secondary/15 h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
+                        Manage Students
+                      </Button>
+                    </Link>
+                    <Link href={`/dashboard/teachers/squad/${squad.id}/settings`} className="flex-1">
+                      <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
+                        Squad Settings
+                      </Button>
+                    </Link>
                   </div>
                 </Card>
               );
@@ -282,9 +215,11 @@ export default function TeachersPage() {
             </p>
           </div>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-widest rounded-md h-11 px-6 cursor-pointer shrink-0">
-          Upload Class Material
-        </Button>
+        <Link href="/dashboard/teachers/upload-material">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-widest rounded-md h-11 px-6 cursor-pointer shrink-0">
+            Upload Class Material
+          </Button>
+        </Link>
       </Card>
     </motion.div>
   );

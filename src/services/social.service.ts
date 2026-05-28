@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 export class SocialService {
-  static async getSquads() {
+  static async getSquads(ownerId?: string) {
     try {
       const count = await prisma.squad.count();
       if (count === 0) {
@@ -21,10 +21,13 @@ export class SocialService {
     }
 
     // Fetch squads, and calculate total XP dynamically from the sum of members' XP
+    const whereClause = ownerId ? { ownerId } : {};
+    
     const squads = await prisma.squad.findMany({
+      where: whereClause,
       include: {
         members: {
-          select: { xp: true }
+          select: { xp: true, id: true, displayName: true, level: true, rank: true }
         },
         _count: {
           select: { members: true }
@@ -40,7 +43,8 @@ export class SocialService {
         name: s.name,
         desc: s.desc,
         totalXp: realXp,
-        _count: s._count
+        _count: s._count,
+        members: s.members
       };
     });
 
@@ -53,6 +57,41 @@ export class SocialService {
     return prisma.user.update({
       where: { id: userId },
       data: { squadId }
+    });
+  }
+
+  static async createSquad(ownerId: string, name: string, desc: string) {
+    return prisma.squad.create({
+      data: {
+        name,
+        desc,
+        ownerId,
+      }
+    });
+  }
+
+  static async updateSquad(squadId: string, name: string, desc: string) {
+    return prisma.squad.update({
+      where: { id: squadId },
+      data: { name, desc }
+    });
+  }
+
+  static async deleteSquad(squadId: string) {
+    // First remove all members
+    await prisma.user.updateMany({
+      where: { squadId },
+      data: { squadId: null }
+    });
+    return prisma.squad.delete({
+      where: { id: squadId }
+    });
+  }
+
+  static async removeMember(squadId: string, userId: string) {
+    return prisma.user.update({
+      where: { id: userId, squadId },
+      data: { squadId: null }
     });
   }
 }

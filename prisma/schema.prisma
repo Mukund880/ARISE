@@ -28,6 +28,7 @@ model User {
   
   topics      Topic[]
   squad       Squad?   @relation(fields: [squadId], references: [id])
+  squadsOwned Squad[]  @relation("SquadOwner")
 }
 
 model Squad {
@@ -37,6 +38,8 @@ model Squad {
   totalXp     Int      @default(0)
   createdAt   DateTime @default(now())
   
+  ownerId     String?
+  owner       User?    @relation("SquadOwner", fields: [ownerId], references: [id])
   members     User[]
 }
 
