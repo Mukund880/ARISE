@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { UserService } from '@/services/user.service';
-import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
@@ -13,16 +12,17 @@ export async function POST(req: Request) {
     // Ensure user exists in Prisma DB
     await UserService.getUserProfile(uid, email || `${uid}@placeholder.com`, displayName);
 
-    // Sync XP, Level, Rank from client-side Firebase state to secure Prisma DB
+    // Sync XP, Level, Rank from client-side Firebase state to secure Firestore DB
     if (xp !== undefined) {
-      await prisma.user.update({
-        where: { id: uid },
-        data: {
-          xp: Number(xp),
-          level: Number(level || 1),
-          rank: rank || 'Rookie',
-          updatedAt: new Date()
-        }
+      const { db } = await import('@/lib/firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, {
+        xp: Number(xp),
+        level: Number(level || 1),
+        rank: rank || 'Rookie',
+        updatedAt: new Date().toISOString()
       });
     }
 

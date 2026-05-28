@@ -1,106 +1,100 @@
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/firebase';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
 export class SocialService {
   static async getSquads(ownerId?: string) {
-    try {
-      const count = await prisma.squad.count();
-      if (count === 0) {
-        // Seed default squads with 0 XP
-        await prisma.squad.createMany({
-          data: [
-            { id: "squad_ai_pioneers", name: "AI Pioneers", desc: "For those pushing the boundaries of machine learning and neural networks.", totalXp: 0, inviteCode: "AI-101" },
-            { id: "squad_quantum_scholars", name: "Quantum Scholars", desc: "Exploring the fundamentals of quantum computing and physics-informed AI.", totalXp: 0, inviteCode: "QT-202" },
-            { id: "squad_byte_benders", name: "Byte Benders", desc: "Dedicated to solving algorithm puzzles, coding challenges, and system design.", totalXp: 0, inviteCode: "BB-303" },
-            { id: "squad_fullstack_wizards", name: "Fullstack Wizards", desc: "Building beautiful, functional web applications from database to UI.", totalXp: 0, inviteCode: "FS-404" },
-            { id: "squad_data_alchemists", name: "Data Alchemists", desc: "Unlocking insights from massive datasets and building predictive pipelines.", totalXp: 0, inviteCode: "DA-505" }
-          ]
-        });
-      }
-    } catch (err) {
-      console.error("Error seeding squads:", err);
+    const squadsRef = collection(db, 'squads');
+    let q = query(squadsRef);
+    if (ownerId) {
+      q = query(squadsRef, where('ownerId', '==', ownerId));
     }
-
-    // Fetch squads, and calculate total XP dynamically from the sum of members' XP
-    const whereClause = ownerId ? { ownerId } : {};
     
-    const squads = await prisma.squad.findMany({
-      where: whereClause,
-      include: {
-        members: {
-          select: { xp: true, id: true, displayName: true, level: true, rank: true }
-        },
-        _count: {
-          select: { members: true }
-        }
-      }
-    });
+    const snapshot = await getDocs(q);
+    const squads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
-    // Map each squad to calculate total XP based on members' real-time XP
+    // Fetch all users to calculate accurate member count and XP
+    const usersRef = collection(db, 'users');
+    const usersSnap = await getDocs(usersRef);
+    const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
     const mappedSquads = squads.map(s => {
-      const realXp = s.members.reduce((acc, m) => acc + m.xp, 0);
+      const members = allUsers.filter(u => u.squadId === s.id);
+      const realXp = members.reduce((acc, m) => acc + (m.xp || 0), 0);
       return {
-        id: s.id,
-        name: s.name,
-        desc: s.desc,
-        inviteCode: s.inviteCode,
+        ...s,
         totalXp: realXp,
-        _count: s._count,
-        members: s.members
+        _count: { members: members.length },
+        members: members.map(m => ({
+          id: m.id,
+          displayName: m.displayName,
+          xp: m.xp,
+          level: m.level,
+          rank: m.rank,
+          quizAccuracy: m.quizAccuracy
+        }))
       };
     });
 
-    // Sort by real XP desc
     mappedSquads.sort((a, b) => b.totalXp - a.totalXp);
     return mappedSquads;
   }
 
   static async joinSquad(userId: string, inviteCode: string) {
-    const squad = await prisma.squad.findUnique({ where: { inviteCode } });
-    if (!squad) throw new Error("Invalid invite code");
+    const squadsRef = collection(db, 'squads');
+    const q = query(squadsRef, where('inviteCode', '==', inviteCode));
+    const snap = await getDocs(q);
     
-    return prisma.user.update({
-      where: { id: userId },
-      data: { squadId: squad.id }
-    });
+    if (snap.empty) throw new Error("Invalid invite code");
+    const squad = snap.docs[0];
+    
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { squadId: squad.id });
+    
+    return { id: userId, squadId: squad.id };
   }
 
   static async createSquad(ownerId: string, name: string, desc: string) {
-    // Generate a simple 6-character alphanumeric code
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const newSquadRef = doc(collection(db, 'squads'));
     
-    return prisma.squad.create({
-      data: {
-        name,
-        desc,
-        ownerId,
-        inviteCode,
-      }
-    });
+    const squadData = {
+      name,
+      desc,
+      ownerId,
+      inviteCode,
+      totalXp: 0,
+      createdAt: new Date().toISOString()
+    };
+    
+    await setDoc(newSquadRef, squadData);
+    return { id: newSquadRef.id, ...squadData };
   }
 
   static async updateSquad(squadId: string, name: string, desc: string) {
-    return prisma.squad.update({
-      where: { id: squadId },
-      data: { name, desc }
-    });
+    const squadRef = doc(db, 'squads', squadId);
+    await updateDoc(squadRef, { name, desc });
+    return { id: squadId, name, desc };
   }
 
   static async deleteSquad(squadId: string) {
-    // First remove all members
-    await prisma.user.updateMany({
-      where: { squadId },
-      data: { squadId: null }
-    });
-    return prisma.squad.delete({
-      where: { id: squadId }
-    });
+    // Remove all members
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('squadId', '==', squadId));
+    const snap = await getDocs(q);
+    
+    const updatePromises = snap.docs.map(userDoc => 
+      updateDoc(doc(db, 'users', userDoc.id), { squadId: null })
+    );
+    await Promise.all(updatePromises);
+    
+    await deleteDoc(doc(db, 'squads', squadId));
+    return { success: true };
   }
 
   static async removeMember(squadId: string, userId: string) {
-    return prisma.user.update({
-      where: { id: userId, squadId },
-      data: { squadId: null }
-    });
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { squadId: null });
+    return { success: true };
   }
 }
 

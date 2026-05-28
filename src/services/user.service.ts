@@ -1,33 +1,36 @@
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 
 export class UserService {
   static async getUserProfile(uid: string, email: string, displayName?: string) {
-    let user = await prisma.user.findUnique({ where: { id: uid } });
+    const userRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userRef);
     
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          id: uid,
-          email,
-          displayName,
-          xp: 0,
-          level: 1,
-          rank: 'Rookie',
-          streak: 1
-        }
-      });
+    if (!userSnap.exists()) {
+      const newUser = {
+        id: uid,
+        email,
+        displayName: displayName || email.split('@')[0],
+        xp: 0,
+        level: 1,
+        rank: 'Rookie',
+        streak: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(userRef, newUser);
+      return newUser;
     }
     
-    return user;
+    return userSnap.data();
   }
 
   static async updateStreak(uid: string) {
-    // Basic streak logic placeholder
-    return prisma.user.update({
-      where: { id: uid },
-      data: {
-        streak: { increment: 1 }
-      }
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+      streak: increment(1),
+      updatedAt: new Date().toISOString()
     });
   }
 }
+

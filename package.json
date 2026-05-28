@@ -17,7 +17,6 @@
     "@langchain/pinecone": "^1.0.3",
     "@langchain/textsplitters": "^1.0.1",
     "@pinecone-database/pinecone": "^7.2.0",
-    "@prisma/client": "^6.2.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@rive-app/react-canvas": "^4.28.6",
@@ -49,7 +48,6 @@
     "@types/three": "^0.184.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "prisma": "^6.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

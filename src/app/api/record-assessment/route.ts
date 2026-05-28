@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
@@ -12,13 +11,17 @@ export async function POST(req: Request) {
     // A real app would calculate spaced repetition dates here (e.g. using SuperMemo algorithm)
     // For now, we update the topic progress and save a record.
     
-    // Save to relational DB
-    await prisma.topic.update({
-      where: { id: topicId },
-      data: {
-        progress: 100
-      }
-    }).catch(() => null); // Catch in case the topic isn't synced to Prisma yet since we use Firestore heavily right now.
+    const { db } = await import('@/lib/firebase');
+    const { doc, updateDoc } = await import('firebase/firestore');
+
+    // Save to Firestore
+    try {
+      const topicRef = doc(db, 'topics', topicId);
+      await updateDoc(topicRef, { progress: 100 });
+    } catch (e) {
+      // Catch in case the topic doesn't exist
+      console.warn("Could not update topic progress", e);
+    }
 
     return NextResponse.json({ success: true, spacedRepetitionDate: new Date(Date.now() + 86400000) }); // +1 day
   } catch (error) {

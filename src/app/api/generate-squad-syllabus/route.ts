@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { aiService } from '@/lib/ai-service';
-import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
@@ -10,17 +9,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Fetch squad and its members
-    const squad = await prisma.squad.findUnique({
-      where: { id: squadId },
-      include: { members: true }
-    });
+    const { db } = await import('@/lib/firebase');
+    const { doc, getDoc, collection, query, where, getDocs, setDoc } = await import('firebase/firestore');
 
-    if (!squad) {
+    // 1. Fetch squad and its members
+    const squadRef = doc(db, 'squads', squadId);
+    const squadSnap = await getDoc(squadRef);
+
+    if (!squadSnap.exists()) {
       return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
     }
+    const squad = squadSnap.data();
 
-    if (squad.members.length === 0) {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('squadId', '==', squadId));
+    const membersSnap = await getDocs(q);
+    const members = membersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (members.length === 0) {
       return NextResponse.json({ error: 'Cannot generate syllabus for an empty squad.' }, { status: 400 });
     }
 
@@ -30,39 +36,43 @@ export async function POST(req: Request) {
 
     // 3. Distribute to all members
     const distributions = [];
-    for (const member of squad.members) {
-      const topic = await prisma.topic.create({
-        data: {
-          userId: member.id,
-          title: topicTitle,
-          level,
-          goal,
-          progress: 0,
-        }
+    const topicsRef = collection(db, 'topics');
+    const modulesRef = collection(db, 'modules');
+
+    for (const member of members) {
+      const topicDocRef = doc(topicsRef);
+      await setDoc(topicDocRef, {
+        userId: member.id,
+        title: topicTitle,
+        level,
+        goal,
+        progress: 0,
+        createdAt: new Date().toISOString()
       });
 
-      const modulesData = roadmap.map((mod: any, index: number) => ({
-        topicId: topic.id,
-        title: mod.title,
-        duration: mod.duration || "30m",
-        xp: mod.xp || 100,
-        order: index,
-        isCompleted: false,
-      }));
-
-      await prisma.module.createMany({
-        data: modulesData
+      const modulePromises = roadmap.map(async (mod: any, index: number) => {
+        const modRef = doc(modulesRef);
+        await setDoc(modRef, {
+          topicId: topicDocRef.id,
+          title: mod.title,
+          duration: mod.duration || "30m",
+          xp: mod.xp || 100,
+          order: index,
+          isCompleted: false,
+          createdAt: new Date().toISOString()
+        });
       });
+      await Promise.all(modulePromises);
 
       distributions.push({
         userId: member.id,
-        topicId: topic.id
+        topicId: topicDocRef.id
       });
     }
 
     return NextResponse.json({
       success: true,
-      message: `Syllabus distributed to ${squad.members.length} students.`,
+      message: `Syllabus distributed to ${members.length} students.`,
       distributions,
       roadmap
     });
@@ -71,3 +81,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to generate squad syllabus' }, { status: 500 });
   }
 }
+
