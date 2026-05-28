@@ -191,7 +191,7 @@ export default function AdaptiveLearningPage() {
             })
           });
         } catch (syncErr) {
-          console.error("Failed to sync XP with Prisma database:", syncErr);
+          console.error("Failed to sync XP with Firestore database:", syncErr);
         }
 
         // Update local state

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing UID' }, { status: 400 });
     }
 
-    // Ensure user exists in Prisma DB
+    // Ensure user exists in Firebase Firestore
     await UserService.getUserProfile(uid, email || `${uid}@placeholder.com`, displayName);
 
     // Sync XP, Level, Rank from client-side Firebase state to secure Firestore DB

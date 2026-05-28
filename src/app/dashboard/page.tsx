@@ -48,7 +48,7 @@ export default function DashboardPage() {
     fetchTopics();
   }, [user]);
 
-  // Sync user profile state (XP, Level, Rank) to Prisma SQLite DB on load/change
+  // Sync user profile state (XP, Level, Rank) to Firebase DB on load/change
   useEffect(() => {
     async function syncProfile() {
       if (!user || !userProfile) return;
@@ -66,18 +66,18 @@ export default function DashboardPage() {
           })
         });
       } catch (err) {
-        console.error("Failed to sync profile with Prisma:", err);
+        console.error("Failed to sync profile with Firebase:", err);
       }
     }
     syncProfile();
   }, [user, userProfile]);
 
-  // Fetch real-time leaderboard from Prisma SQLite DB
+  // Fetch real-time leaderboard from Firebase DB
   useEffect(() => {
     async function fetchLeaderboard() {
       try {
         const res = await fetch("/api/gamification/leaderboard");
-        if (!res.ok) throw new Error("Failed to fetch leaderboard from Prisma");
+        if (!res.ok) throw new Error("Failed to fetch leaderboard from Firebase");
         const list = await res.json();
         
         // Map backend 'id' field to 'uid' expected by frontend UI
