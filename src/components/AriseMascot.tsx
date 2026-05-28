@@ -17,6 +17,7 @@ interface AriseMascotProps {
   size?: number;
   interactive?: boolean;
   global?: boolean;
+  framed?: boolean;
 }
 
 export function AriseMascot({
@@ -24,6 +25,7 @@ export function AriseMascot({
   size = 120,
   interactive = true,
   global = false,
+  framed = false,
 }: AriseMascotProps) {
   let contextState;
   try {
@@ -127,13 +129,10 @@ export function AriseMascot({
 
   const isLowEnergy = currentMascotState === "sleepy" || currentMascotState === "good_night" || currentMascotState === "sleep";
 
-  return (
+  const mascotContent = (
     <div
-      className={`relative flex flex-col items-center justify-center select-none ${
-        interactive ? "cursor-pointer active:scale-[0.97] transition-all duration-300 hover:brightness-[1.02]" : ""
-      }`}
+      className="relative flex flex-col items-center justify-center"
       style={{ width: size, height: size * 1.15 }}
-      onClick={handleMascotClick}
     >
       {/* Volumetric shadow halo */}
       <motion.div
@@ -147,7 +146,7 @@ export function AriseMascot({
           ease: "easeInOut",
         }}
         className={`absolute w-[80%] h-[80%] rounded-full blur-[25px] ${
-          isLowEnergy ? "bg-amber-500/10" : "bg-indigo-500/10"
+          isLowEnergy ? "bg-amber-500/10" : "bg-[rgba(197,168,128,0.15)]"
         }`}
         style={{ top: "15%", zIndex: 0 }}
       />
@@ -198,7 +197,7 @@ export function AriseMascot({
                 ]
           }
         }}
-        className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(99,102,241,0.15)]"
+        className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(197,168,128,0.2)]"
         style={{ zIndex: 1 }}
       />
 
@@ -213,9 +212,47 @@ export function AriseMascot({
           duration: isLowEnergy ? 5.0 : 4.0,
           ease: "easeInOut",
         }}
-        className="w-14 h-1.5 bg-slate-900/10 rounded-full blur-[3px] mt-1"
+        className="w-14 h-1.5 bg-neutral-950/15 rounded-full blur-[3px] mt-1"
         style={{ zIndex: 0 }}
       />
+    </div>
+  );
+
+  if (framed) {
+    return (
+      <div
+        onClick={handleMascotClick}
+        className={`relative p-5 border border-border bg-card/65 backdrop-blur-md rounded-lg flex flex-col items-center justify-center gap-3 transition-all duration-350 shadow-sm ${
+          interactive ? "cursor-pointer active:scale-[0.98] hover:border-primary/50 hover:brightness-[1.02]" : ""
+        }`}
+        style={{ width: size + 40 }}
+      >
+        {/* Inner Gold Accents at Corners */}
+        <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t border-l border-primary/55 pointer-events-none" />
+        <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t border-r border-primary/55 pointer-events-none" />
+        <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b border-l border-primary/55 pointer-events-none" />
+        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b border-r border-primary/55 pointer-events-none" />
+
+        {/* Mascot Mascot Image Container */}
+        {mascotContent}
+
+        {/* Museum Plaque Label */}
+        <div className="text-[8px] font-mono tracking-[0.25em] text-primary font-bold uppercase select-none border-t border-border/40 pt-2 w-full text-center">
+          ARI // {currentMascotState}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`relative flex flex-col items-center justify-center select-none ${
+        interactive ? "cursor-pointer active:scale-[0.97] transition-all duration-300 hover:brightness-[1.02]" : ""
+      }`}
+      style={{ width: size, height: size * 1.15 }}
+      onClick={handleMascotClick}
+    >
+      {mascotContent}
     </div>
   );
 }

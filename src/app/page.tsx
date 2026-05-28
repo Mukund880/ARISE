@@ -8,42 +8,29 @@ import { AriseMascot } from "@/components/AriseMascot";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-slate-800 overflow-hidden relative">
-      {/* Immersive background glows */}
-      <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[50%] bg-indigo-200/20 blur-[130px] rounded-full pointer-events-none" />
-      <div className="absolute top-[20%] right-[-10%] w-[50%] h-[60%] bg-cyan-200/20 blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] bg-pink-200/10 blur-[120px] rounded-full pointer-events-none" />
-
-      {/* Floating particles or shapes */}
-      <motion.div
-        animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
-        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
-        className="absolute top-[25%] left-[10%] w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 opacity-10 blur-sm pointer-events-none hidden md:block"
-      />
-      <motion.div
-        animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
-        transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
-        className="absolute bottom-[30%] right-[15%] w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 to-yellow-500 opacity-10 blur-md pointer-events-none hidden md:block"
-      />
+    <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
+      {/* Immersive subtle background warm gold glow */}
+      <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[50%] bg-primary/5 blur-[130px] rounded-full pointer-events-none" />
+      <div className="absolute top-[20%] right-[-10%] w-[50%] h-[60%] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 backdrop-blur-xl bg-white/40 border-b border-slate-200/60">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 backdrop-blur-md bg-background/70 border-b border-border">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="p-2 bg-gradient-to-tr from-indigo-500 to-cyan-500 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.2)] transition-transform group-hover:scale-105">
-            <Brain className="w-6 h-6 text-white" />
+          <div className="p-2 bg-primary/5 border border-primary/30 rounded-lg transition-transform group-hover:scale-105">
+            <Brain className="w-5 h-5 text-primary" />
           </div>
-          <span className="text-2xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-955 to-indigo-900 uppercase">
+          <span className="text-xl font-bold tracking-widest text-primary uppercase">
             ARISE
           </span>
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/login">
-            <Button variant="ghost" className="text-slate-600 hover:text-slate-900 rounded-xl transition-all font-semibold">
+            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-md transition-all font-mono text-xs uppercase tracking-wider">
               Log In
             </Button>
           </Link>
           <Link href="/signup">
-            <Button className="bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-[0_4px_15px_rgba(99,102,241,0.2)] hover:shadow-[0_4px_25px_rgba(34,211,238,0.3)] active:scale-95">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider rounded-md px-5 py-2.5 transition-all shadow-sm">
               Get Started
             </Button>
           </Link>
@@ -53,51 +40,49 @@ export default function LandingPage() {
       {/* Hero Section */}
       <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 pt-32 text-center">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="max-w-4xl mx-auto flex flex-col items-center"
         >
           {/* Animated Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 border rounded-full border-indigo-200/50 bg-indigo-50/50 backdrop-blur-sm shadow-inner">
-            <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
-            <span className="text-xs font-bold text-indigo-700 uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 border border-primary/25 bg-primary/5 rounded-md backdrop-blur-sm">
+            <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
+            <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">
               Study Arena & Gamified AI Tutor
             </span>
           </div>
           
           {/* Headline */}
-          <h1 className="text-4xl md:text-7xl font-black tracking-tight mb-6 leading-[1.15] text-slate-800">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-[1.15] text-foreground font-heading">
             Learn anything inside a <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 via-indigo-650 to-pink-500">
-              living study ecosystem.
-            </span>
+            <span className="text-primary italic">living study ecosystem.</span>
           </h1>
 
-          {/* Interactive Mascot Highlight */}
-          <div className="my-6 relative flex flex-col items-center group">
-            <div className="absolute inset-0 bg-cyan-200/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
-            <AriseMascot state="wave" size={130} />
-            <div className="mt-2 bg-white border border-indigo-100 px-4 py-1.5 rounded-full text-xs text-indigo-600 font-bold backdrop-blur shadow-md">
+          {/* Interactive Mascot Highlight - Framed in luxury museum frame */}
+          <div className="my-8 relative flex flex-col items-center group">
+            <div className="absolute inset-0 bg-primary/5 rounded-lg blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
+            <AriseMascot state="wave" size={110} framed={true} />
+            <div className="mt-4 bg-card border border-border px-4 py-1.5 rounded-md text-[10px] font-mono text-primary font-bold shadow-sm">
               "Hi! I'm Ari, your adaptive learning companion!"
             </div>
           </div>
           
           {/* Description */}
-          <p className="text-base md:text-lg text-slate-600 mb-10 max-w-2xl leading-relaxed">
-            Upload your lectures or pick a topic. ARISE designs personalized roadmaps, constructs visual aids, and tests your understanding with micro-quizzes, all while rewarding your consistency.
+          <p className="text-sm md:text-base text-muted-foreground mb-10 max-w-2xl leading-relaxed">
+            Upload lectures or pick a topic. ARISE designs personalized roadmaps, constructs visual aids, and tests understanding with micro-quizzes, all while rewarding your consistency.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
             <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white h-14 px-8 text-base font-bold rounded-2xl group shadow-lg shadow-indigo-500/10 active:scale-95 transition-transform arbuttonchunky">
+              <Button size="lg" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 h-12 px-8 text-xs font-mono uppercase tracking-wider rounded-md group shadow-sm transition-transform active:scale-[0.98]">
                 Start Studying Free
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Link href="/signup" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-200 hover:bg-slate-50 h-14 px-8 text-base font-semibold rounded-2xl backdrop-blur-sm transition-colors text-slate-700 bg-white/50">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-border bg-card/50 hover:bg-secondary/15 h-12 px-8 text-xs font-mono uppercase tracking-wider rounded-md backdrop-blur-sm transition-all text-foreground">
                 Join active squads
               </Button>
             </Link>
@@ -106,23 +91,23 @@ export default function LandingPage() {
 
         {/* Feature Grid */}
         <motion.div 
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-28 max-w-6xl mx-auto px-4 pb-24"
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24 max-w-6xl mx-auto px-4 pb-24"
         >
           <FeatureCard 
-            icon={<Target className="w-6 h-6 text-cyan-600" />}
+            icon={<Target className="w-5 h-5 text-primary" />}
             title="Adaptive Roadmaps"
             description="Ari maps chapters to your knowledge level, generating an interactive schedule built for active recall."
           />
           <FeatureCard 
-            icon={<Zap className="w-6 h-6 text-indigo-500" />}
+            icon={<Zap className="w-5 h-5 text-primary" />}
             title="Interactive Arena"
             description="Study sections are parsed into visual blocks. Tap any paragraph to ask AI or trigger interactive visualizers."
           />
           <FeatureCard 
-            icon={<Award className="w-6 h-6 text-pink-500" />}
+            icon={<Award className="w-5 h-5 text-primary" />}
             title="Playful Progression"
             description="Earn XP, climb squad leaderboards, maintain study streaks, and unlock achievements for keeping consistent."
           />
@@ -134,12 +119,12 @@ export default function LandingPage() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <div className="p-8 rounded-3xl bg-white/80 border border-slate-200/60 backdrop-blur-lg hover:border-indigo-200 shadow-sm transition-all duration-300 text-left hover:translate-y-[-4px] group">
-      <div className="mb-5 p-3.5 rounded-2xl bg-slate-50 border border-slate-100 inline-block group-hover:bg-indigo-50 group-hover:scale-105 transition-all duration-300">
+    <div className="p-8 rounded-lg bg-card border border-border hover:border-primary/50 shadow-sm transition-all duration-300 text-left hover:translate-y-[-2px] group">
+      <div className="mb-5 p-3 bg-primary/5 border border-primary/20 rounded-lg inline-block group-hover:scale-105 transition-transform duration-300">
         {icon}
       </div>
-      <h3 className="text-xl font-bold mb-3 text-slate-800 group-hover:text-indigo-600 transition-colors">{title}</h3>
-      <p className="text-slate-600 text-sm leading-relaxed">{description}</p>
+      <h3 className="text-md font-bold mb-3 text-foreground group-hover:text-primary transition-colors">{title}</h3>
+      <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
     </div>
   );
 }
