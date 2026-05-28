@@ -29,9 +29,12 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const pathname  = usePathname();
   const { user, userProfile } = useAuth();
 
-  const level   = userProfile?.level || 1;
-  const rank    = userProfile?.rank  || "Rookie";
   const xp      = userProfile?.xp   || 0;
+  const level   = Math.floor(xp / 1000) + 1;
+  let rank = "Rookie";
+  if (level >= 15) rank = "Grandmaster";
+  else if (level >= 10) rank = "Master";
+  else if (level >= 5) rank = "Scholar";
   const xpInCurrentLevel   = xp % 1000;
   const xpNeededForNextLevel = 1000;
   const progressPercent    = Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100);

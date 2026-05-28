@@ -13,8 +13,12 @@ import { collection, query, getDocs } from "firebase/firestore";
 export default function ProgressPage() {
   const { user, userProfile } = useAuth();
 
-  const level = userProfile?.level || 1;
   const xp = userProfile?.xp || 0;
+  const level = Math.floor(xp / 1000) + 1;
+  let rank = "Rookie";
+  if (level >= 15) rank = "Grandmaster";
+  else if (level >= 10) rank = "Master";
+  else if (level >= 5) rank = "Scholar";
   const streak = userProfile?.streak || 0;
   const accuracy = userProfile?.quizAccuracy || 0;
   const studyTime = userProfile?.studyTime || 0;
@@ -71,7 +75,7 @@ export default function ProgressPage() {
         <OverviewStatCard icon={<Clock className="w-4 h-4 text-primary" />} label="TOTAL STUDY TIME" value={`${studyTime} MINS`} desc="Focused study time logged" />
         <OverviewStatCard icon={<Trophy className="w-4 h-4 text-primary" />} label="XP ACCUMULATED" value={`${xp.toLocaleString()} XP`} desc="Total points earned" />
         <OverviewStatCard icon={<Target className="w-4 h-4 text-primary" />} label="QUIZ ACCURACY" value={`${accuracy}%`} desc="Average correct responses" />
-        <OverviewStatCard icon={<Award className="w-4 h-4 text-primary" />} label="CURRENT LEVEL" value={`LEVEL ${level}`} desc={`Rank: ${userProfile?.rank || "Rookie"}`} />
+        <OverviewStatCard icon={<Award className="w-4 h-4 text-primary" />} label="CURRENT LEVEL" value={`LEVEL ${level}`} desc={`Rank: ${rank}`} />
       </div>
 
       {/* Charts Grid */}

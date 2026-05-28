@@ -267,8 +267,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-4">
             <StatCard icon={<Flame className="w-4 h-4 text-primary" />} label="Streak" value={`${userProfile?.streak || 0} Days`} />
             <StatCard icon={<Trophy className="w-4 h-4 text-primary" />} label="XP" value={userProfile?.xp || 0} />
-            <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Level" value={userProfile?.level || 1} />
-            <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Rank" value={userProfile?.rank || 'Rookie'} />
+            <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Level" value={Math.floor((userProfile?.xp || 0) / 1000) + 1} />
+            <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Rank" value={(Math.floor((userProfile?.xp || 0) / 1000) + 1) >= 15 ? "Grandmaster" : (Math.floor((userProfile?.xp || 0) / 1000) + 1) >= 10 ? "Master" : (Math.floor((userProfile?.xp || 0) / 1000) + 1) >= 5 ? "Scholar" : "Rookie"} />
             <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Accuracy" value={`${userProfile?.quizAccuracy || 0}%`} />
             <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Study Time" value={`${userProfile?.studyTime || 0} Mins`} />
           </div>
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                           {player.displayName}
                         </p>
                         <p className="text-[9px] font-mono uppercase text-muted-foreground tracking-widest mt-0.5">
-                          Lvl {player.level || Math.floor((player.xp || 0) / 1000) + 1} • {player.rank}
+                          Lvl {Math.floor((player.xp || 0) / 1000) + 1} • { (Math.floor((player.xp || 0) / 1000) + 1) >= 15 ? "Grandmaster" : (Math.floor((player.xp || 0) / 1000) + 1) >= 10 ? "Master" : (Math.floor((player.xp || 0) / 1000) + 1) >= 5 ? "Scholar" : "Rookie" }
                         </p>
                       </div>
                       <div className="text-right shrink-0">
