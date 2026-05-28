@@ -133,6 +133,7 @@ export default function TeachersPage() {
             </div>
           ) : (
             squads.map((squad) => {
+              const memberCount = squad._count?.members || squad.members?.length || 0;
               const accuracyPercent = squad.members?.length > 0 
                 ? Math.round(squad.members.reduce((acc: number, m: any) => acc + (m.quizAccuracy || 80), 0) / squad.members.length)
                 : 0;
