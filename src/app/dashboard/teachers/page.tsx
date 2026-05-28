@@ -58,11 +58,14 @@ export default function TeachersPage() {
           }
         });
 
+        const avgAccuracy = accuracyCount > 0 ? totalAccuracy / accuracyCount : 0;
+        const avgWeeklyTime = totalStudents > 0 ? totalWeeklyTime / totalStudents : 0;
+
         setSquadStats({
           totalStudents,
           totalSquads: allSquads.length,
-          avgWeeklyTime: allSquads.length > 0 ? Math.round(totalWeeklyTime / allSquads.length) : 0,
-          avgAccuracy: accuracyCount > 0 ? Math.round(totalAccuracy / accuracyCount * 10) / 10 : 0
+          avgWeeklyTime: Math.round(avgWeeklyTime),
+          avgAccuracy: Math.round(avgAccuracy * 10) / 10
         });
       } catch (err) {
         console.error("Error fetching squads:", err);
@@ -71,11 +74,34 @@ export default function TeachersPage() {
       }
     }
     
-    fetchTeacherSquads();
-  }, [user]);
+    if (user && userProfile?.role === "teacher") fetchTeacherSquads();
+    else if (!loading && userProfile?.role !== "teacher") setSquadsLoading(false);
+  }, [user, userProfile, loading]);
+
+  if (loading) return <div className="text-center py-12">Loading...</div>;
+
+  if (userProfile?.role !== "teacher") {
+    return (
+      <div className="max-w-2xl mx-auto mt-12 text-center space-y-6">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Lock className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-wider text-foreground uppercase">Educator Access Required</h1>
+        <p className="text-muted-foreground text-sm">
+          The Teacher Dashboard is exclusively available on the Guild Master plan. 
+          Upgrade to unlock powerful tools for managing classroom squads, generating syllabus modules, and tracking student performance.
+        </p>
+        <Link href="/dashboard/pricing">
+          <Button className="mt-4 px-8 font-mono tracking-widest uppercase text-xs h-11 bg-primary text-primary-foreground hover:bg-primary/90">
+            View Upgrade Options
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   // Show loading skeleton while profile is still loading
-  if (loading || squadsLoading) {
+  if (squadsLoading) {
     return (
       <div className="max-w-6xl mx-auto space-y-8 pb-12">
         <div className="h-16 rounded-lg bg-card border border-border animate-pulse" />

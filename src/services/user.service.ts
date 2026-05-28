@@ -15,6 +15,7 @@ export class UserService {
         level: 1,
         rank: 'Rookie',
         streak: 1,
+        role: 'student',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

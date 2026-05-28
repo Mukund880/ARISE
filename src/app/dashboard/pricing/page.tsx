@@ -4,8 +4,17 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Check, Sparkles } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useState } from "react";
 
 export default function PricingPage() {
+  const { user, userProfile } = useAuth();
+  const [upgrading, setUpgrading] = useState(false);
+
+  const isTeacher = userProfile?.role === "teacher";
+
   const tiers = [
     {
       name: "Scholar",
@@ -20,8 +29,9 @@ export default function PricingPage() {
         "Basic study metrics & tracking dashboard"
       ],
       cta: "Current Free Tier",
-      active: true,
-      popular: false
+      active: !isTeacher,
+      popular: false,
+      isTeacherTier: false
     },
     {
       name: "Polymath",
@@ -38,7 +48,8 @@ export default function PricingPage() {
       ],
       cta: "Upgrade to Polymath",
       active: false,
-      popular: true
+      popular: true,
+      isTeacherTier: false
     },
     {
       name: "Guild Master",
@@ -53,11 +64,33 @@ export default function PricingPage() {
         "Aggregated instructor stats dashboard link",
         "Dedicated cloud database sync intervals"
       ],
-      cta: "Create Student Guild",
-      active: false,
-      popular: false
+      cta: isTeacher ? "Current Plan" : "Upgrade to Educator",
+      active: isTeacher,
+      popular: false,
+      isTeacherTier: true
     }
   ];
+
+  async function handleUpgrade(tier: any) {
+    if (!user) return alert("Please log in first.");
+    if (tier.isTeacherTier) {
+      setUpgrading(true);
+      try {
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, { role: "teacher" });
+        alert("Success! Your account has been upgraded to a Teacher/Educator account. The 'For Teachers' tab is now unlocked.");
+        // Force refresh
+        window.location.reload();
+      } catch (error) {
+        console.error("Upgrade error:", error);
+        alert("Failed to process upgrade.");
+      } finally {
+        setUpgrading(false);
+      }
+    } else {
+      alert("This is just a mock tier for demonstration.");
+    }
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -111,7 +144,8 @@ export default function PricingPage() {
 
             <div className="pt-8">
               <Button 
-                disabled={tier.active}
+                onClick={() => handleUpgrade(tier)}
+                disabled={tier.active || (upgrading && tier.isTeacherTier)}
                 className={`w-full h-11 text-xs font-mono uppercase tracking-widest rounded-md transition-all cursor-pointer ${
                   tier.active 
                     ? "bg-secondary/15 border border-border text-muted-foreground cursor-not-allowed" 
@@ -120,7 +154,7 @@ export default function PricingPage() {
                       : "bg-card border border-border hover:bg-secondary/15 text-foreground"
                 }`}
               >
-                {tier.cta}
+                {upgrading && tier.isTeacherTier ? "Processing..." : tier.cta}
               </Button>
             </div>
           </Card>
