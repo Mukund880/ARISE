@@ -16,6 +16,7 @@ export default function SquadsPage() {
   const [loading, setLoading] = useState(true);
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [selectedJoinSquadId, setSelectedJoinSquadId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userProfile?.squadId) setJoinedSquadId(userProfile.squadId);
@@ -29,9 +30,8 @@ export default function SquadsPage() {
         const res = await fetch(`/api/social/squads?userId=${user.uid}`);
         if (!res.ok) throw new Error("Failed to fetch squads");
         const allSquads = await res.json();
-        // Filter to only show squads user is joined in
-        const joinedSquads = allSquads.filter((s: any) => s.id === joinedSquadId);
-        setSquads(joinedSquads);
+        // Show all squads
+        setSquads(allSquads);
       } catch (err) {
         console.error("Error fetching squads:", err);
       } finally {
@@ -41,7 +41,7 @@ export default function SquadsPage() {
     if (user) fetchSquads();
   }, [user, joinedSquadId]);
 
-  async function handleJoin(e: React.FormEvent) {
+  async function handleJoin(e: React.FormEvent, squadId: string) {
     e.preventDefault();
     if (!user || !inviteCode) return;
     setJoining(true);
@@ -55,8 +55,9 @@ export default function SquadsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to join squad");
       
       alert("Successfully joined classroom squad!");
-      setJoinedSquadId(data.squadId);
+      setJoinedSquadId(squadId);
       setInviteCode("");
+      setSelectedJoinSquadId(null);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Invalid invite code.");
@@ -91,24 +92,7 @@ export default function SquadsPage() {
         </div>
       </div>
 
-      {/* Join Squad Section */}
-      {!joinedSquadId && (
-        <Card className="p-6 border-border bg-card rounded-lg shadow-sm">
-          <h2 className="text-sm font-bold tracking-widest uppercase text-foreground mb-4">Join a Classroom</h2>
-          <form onSubmit={handleJoin} className="flex gap-4 max-w-md">
-            <input 
-              required
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-              placeholder="ENTER INVITE CODE (e.g. AI-101)"
-              className="flex-1 bg-secondary/20 border border-border rounded-md px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
-            />
-            <Button disabled={joining} type="submit" className="h-[46px] px-6 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest shrink-0">
-              {joining ? "Joining..." : "Join"}
-            </Button>
-          </form>
-        </Card>
-      )}
+
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -154,12 +138,36 @@ export default function SquadsPage() {
                       </span>
                     </div>
 
-                    <Button
-                      disabled={true}
-                      className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all cursor-default bg-primary/10 border border-primary/30 text-primary`}
-                    >
-                      ✓ Your Squad
-                    </Button>
+                    {joinedSquadId === squad.id ? (
+                      <Button
+                        disabled={true}
+                        className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all cursor-default bg-primary/10 border border-primary/30 text-primary`}
+                      >
+                        ✓ Your Squad
+                      </Button>
+                    ) : selectedJoinSquadId === squad.id ? (
+                      <form onSubmit={(e) => handleJoin(e, squad.id)} className="flex gap-2">
+                        <input 
+                          required
+                          value={inviteCode}
+                          onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                          placeholder="CODE"
+                          className="w-full bg-secondary/20 border border-border rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
+                        />
+                        <Button disabled={joining} type="submit" className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest shrink-0">
+                          {joining ? "..." : "Join"}
+                        </Button>
+                      </form>
+                    ) : (
+                      <Button
+                        onClick={() => setSelectedJoinSquadId(squad.id)}
+                        variant="outline"
+                        disabled={!!joinedSquadId}
+                        className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all border-border text-foreground hover:bg-secondary/15`}
+                      >
+                        {joinedSquadId ? "Already in a Squad" : "Join Squad"}
+                      </Button>
+                    )}
                   </div>
                 </Card>
               </motion.div>
