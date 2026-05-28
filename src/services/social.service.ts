@@ -42,6 +42,7 @@ export class SocialService {
         id: s.id,
         name: s.name,
         desc: s.desc,
+        inviteCode: s.inviteCode,
         totalXp: realXp,
         _count: s._count,
         members: s.members
