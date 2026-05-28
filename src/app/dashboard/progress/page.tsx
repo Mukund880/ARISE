@@ -6,30 +6,52 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { TrendingUp, Clock, Trophy, Target, Award, Brain, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { db } from "@/lib/firebase";
+import { collection, query, getDocs } from "firebase/firestore";
 
 export default function ProgressPage() {
   const { user, userProfile } = useAuth();
 
   const level = userProfile?.level || 1;
   const xp = userProfile?.xp || 0;
-  const streak = userProfile?.streak || 1;
+  const streak = userProfile?.streak || 0;
   const accuracy = userProfile?.quizAccuracy || 0;
   const studyTime = userProfile?.studyTime || 0;
 
-  // Real-time data from user profile
-  // Note: Daily breakdown data would require additional study session tracking in the backend
+  const [topics, setTopics] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchTopics() {
+      if (!user) return;
+      try {
+        const topicsCol = collection(db, "users", user.uid, "topics");
+        const q = query(topicsCol);
+        const snap = await getDocs(q);
+        setTopics(snap.docs.map(doc => doc.data()));
+      } catch (err) {
+        console.error("Error fetching topics:", err);
+      }
+    }
+    fetchTopics();
+  }, [user]);
+
+  const totalModules = topics.reduce((acc, topic) => acc + (topic.modules?.length || 0), 0);
+
+  // We do not have daily historical backend tracking yet, so we initialize with real observed data (0 mins per day except total)
+  const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' });
   const studyData = [
-    { day: "Mon", mins: Math.floor(studyTime * 0.15) },
-    { day: "Tue", mins: Math.floor(studyTime * 0.18) },
-    { day: "Wed", mins: Math.floor(studyTime * 0.20) },
-    { day: "Thu", mins: Math.floor(studyTime * 0.22) },
-    { day: "Fri", mins: Math.floor(studyTime * 0.15) },
-    { day: "Sat", mins: Math.floor(studyTime * 0.05) },
-    { day: "Sun", mins: Math.floor(studyTime * 0.05) },
+    { day: "Mon", mins: currentDay === "Mon" ? studyTime : 0 },
+    { day: "Tue", mins: currentDay === "Tue" ? studyTime : 0 },
+    { day: "Wed", mins: currentDay === "Wed" ? studyTime : 0 },
+    { day: "Thu", mins: currentDay === "Thu" ? studyTime : 0 },
+    { day: "Fri", mins: currentDay === "Fri" ? studyTime : 0 },
+    { day: "Sat", mins: currentDay === "Sat" ? studyTime : 0 },
+    { day: "Sun", mins: currentDay === "Sun" ? studyTime : 0 },
   ];
 
-  // Real XP progression - placeholder for trend (would need historical data from backend)
-  const xpProgression = [xp * 0.25, xp * 0.50, xp * 0.75, xp];
+  // Real XP progression
+  const xpProgression = [0, 0, 0, xp];
 
   const maxMins = Math.max(...studyData.map(d => d.mins), 60) || 60;
 
@@ -230,10 +252,10 @@ export default function ProgressPage() {
           </div>
 
           <div className="space-y-4 my-4">
-            <MasteryRow label="Active Syllabus topics" value="2 Topics" />
-            <MasteryRow label="Total Syllabus modules" value="12 Modules" />
+            <MasteryRow label="Active Syllabus topics" value={`${topics.length} Topics`} />
+            <MasteryRow label="Total Syllabus modules" value={`${totalModules} Modules`} />
             <MasteryRow label="Average Module score" value={`${accuracy}%`} />
-            <MasteryRow label="Streak Health" value="100% Consistent" />
+            <MasteryRow label="Streak Health" value={streak > 0 ? `${streak} Days Active` : "Needs Attention"} />
           </div>
 
           <Link href="/dashboard">

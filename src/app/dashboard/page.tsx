@@ -142,7 +142,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight mb-2 text-foreground font-heading">Welcome back, {firstName}! 👋</h1>
             <p className="text-muted-foreground text-sm max-w-lg leading-relaxed">
-              You are currently on a <strong className="text-primary font-bold">{userProfile?.streak || 1}-day streak</strong>. 
+              You are currently on a <strong className="text-primary font-bold">{userProfile?.streak || 0}-day streak</strong>. 
               Let's complete a study session today to lock in your daily XP!
             </p>
           </div>
@@ -265,12 +265,12 @@ export default function DashboardPage() {
           </h2>
           
           <div className="grid grid-cols-2 gap-4">
-            <StatCard icon={<Flame className="w-4 h-4 text-primary" />} label="Streak" value={`${userProfile?.streak || 1} Days`} />
+            <StatCard icon={<Flame className="w-4 h-4 text-primary" />} label="Streak" value={`${userProfile?.streak || 0} Days`} />
             <StatCard icon={<Trophy className="w-4 h-4 text-primary" />} label="XP" value={userProfile?.xp || 0} />
             <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Level" value={userProfile?.level || 1} />
             <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Rank" value={userProfile?.rank || 'Rookie'} />
-            <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Accuracy" value={`${userProfile?.quizAccuracy || 88}%`} />
-            <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Study Time" value={`${userProfile?.studyTime || 40} Mins`} />
+            <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Accuracy" value={`${userProfile?.quizAccuracy || 0}%`} />
+            <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Study Time" value={`${userProfile?.studyTime || 0} Mins`} />
           </div>
         </div>
       </div>
