@@ -240,6 +240,71 @@ export default function AdaptiveLearningPage() {
     });
   }
 
+  if (activeModule) {
+    return (
+      <div className="max-w-6xl mx-auto pb-16 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="w-full bg-[#FDFBF7] border border-slate-200/60 rounded-3xl overflow-hidden shadow-lg flex flex-col min-h-[85vh]">
+          {/* Window Header */}
+          <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-[#FAF8F5]">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
+                <Brain className="w-6 h-6 text-indigo-500" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg text-slate-800 tracking-tight leading-snug">{activeModule.title}</h3>
+                <p className="text-[11px] text-slate-500 uppercase tracking-widest font-extrabold mt-0.5">ARISE Study Arena</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setActiveModule(null); setLessonContent(null); }}
+              className="px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors shadow-sm flex items-center gap-2"
+            >
+              <X className="w-4 h-4" /> Close Lesson
+            </button>
+          </div>
+
+          {/* Window Body */}
+          <div className="flex-1 p-6 md:p-8 bg-white/70">
+            {loadingLesson ? (
+              <div className="flex flex-col items-center justify-center py-32 gap-4 max-w-md mx-auto">
+                <AriseMascot size={130} global={true} />
+                <h3 className="text-lg font-bold animate-pulse text-slate-800 mt-4">ARIS is designing study blocks...</h3>
+                <p className="text-sm text-slate-500 text-center leading-relaxed font-semibold">Reviewing semantic context references and crafting multiple choice practice modules.</p>
+              </div>
+            ) : (
+              lessonContent && (
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 bg-white p-6 md:p-8 rounded-2xl border border-slate-100 shadow-sm">
+                  {/* Left side: Lesson explanation */}
+                  <div className="lg:col-span-3 space-y-6 pr-0 lg:pr-8 border-r-0 lg:border-r border-slate-100">
+                    <div className="flex items-center gap-2 text-cyan-600 font-bold text-sm uppercase tracking-wider mb-2">
+                      <Layers className="w-5 h-5 text-cyan-600" />
+                      <span>Lesson Block</span>
+                    </div>
+                    <SmartTextWrapper topicTitle={topicName}>
+                      <div className="prose prose-slate max-w-none text-slate-700 space-y-4 font-semibold">
+                        {parseMarkdown(lessonContent.explanation)}
+                      </div>
+                    </SmartTextWrapper>
+                    
+                    <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} />
+                  </div>
+
+                  {/* Right side: Quiz Panel */}
+                  <div className="lg:col-span-2 mt-6 lg:mt-0">
+                    <PracticeModule 
+                      lessonContent={lessonContent} 
+                      onComplete={handleCompleteModule} 
+                    />
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto pb-16">
       
@@ -395,77 +460,6 @@ export default function AdaptiveLearningPage() {
           </Card>
         </div>
       </div>
-
-      {/* AI Tutor Lesson Immersive Modal */}
-      <AnimatePresence>
-        {activeModule && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md overflow-y-auto">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="relative w-full max-w-4xl bg-[#FDFBF7] border border-slate-200/60 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-[#FAF8F5]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
-                    <Brain className="w-5 h-5 text-indigo-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm text-slate-800 tracking-tight leading-snug">{activeModule.title}</h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">ARISE Study Arena</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => { setActiveModule(null); setLessonContent(null); }}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors border border-transparent hover:border-slate-200/40"
-                >
-                  <X className="w-4 h-4 text-slate-500 hover:text-slate-850" />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-white/70">
-                {loadingLesson ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4 max-w-md mx-auto">
-                    <AriseMascot size={110} global={true} />
-                    <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">ARIS is designing study blocks...</h3>
-                    <p className="text-xs text-slate-500 text-center leading-relaxed font-semibold">Reviewing semantic context references and crafting multiple choice practice modules.</p>
-                  </div>
-                ) : (
-                  lessonContent && (
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 bg-white p-6 rounded-2xl border border-slate-100">
-                      {/* Left side: Lesson explanation */}
-                      <div className="lg:col-span-3 space-y-5 pr-0 lg:pr-6 border-r-0 lg:border-r border-slate-100">
-                        <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase tracking-wider mb-2">
-                          <Layers className="w-4 h-4 text-cyan-600" />
-                          <span>Lesson Block</span>
-                        </div>
-                        <SmartTextWrapper topicTitle={topicName}>
-                          <div className="prose prose-slate max-w-none text-slate-700 space-y-4 font-semibold">
-                            {parseMarkdown(lessonContent.explanation)}
-                          </div>
-                        </SmartTextWrapper>
-                        
-                        <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} />
-                      </div>
-
-                      {/* Right side: Quiz Panel */}
-                      <div className="lg:col-span-2 mt-6 lg:mt-0">
-                        <PracticeModule 
-                          lessonContent={lessonContent} 
-                          onComplete={handleCompleteModule} 
-                        />
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
