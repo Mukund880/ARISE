@@ -430,7 +430,7 @@ export default function AdaptiveLearningPage() {
                 {loadingLesson ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-4 max-w-md mx-auto">
                     <AriseMascot size={110} global={true} />
-                    <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">Ari is designing study blocks...</h3>
+                    <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">ARIS is designing study blocks...</h3>
                     <p className="text-xs text-slate-500 text-center leading-relaxed font-semibold">Reviewing semantic context references and crafting multiple choice practice modules.</p>
                   </div>
                 ) : (

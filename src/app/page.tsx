@@ -64,7 +64,7 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-primary/5 rounded-lg blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
             <AriseMascot state="wave" size={110} framed={true} />
             <div className="mt-4 bg-card border border-border px-4 py-1.5 rounded-md text-[10px] font-mono text-primary font-bold shadow-sm">
-              "Hi! I'm Ari, your adaptive learning companion!"
+              "Hi! I'm ARIS, your adaptive learning companion!"
             </div>
           </div>
           
@@ -99,7 +99,7 @@ export default function LandingPage() {
           <FeatureCard 
             icon={<Target className="w-5 h-5 text-primary" />}
             title="Adaptive Roadmaps"
-            description="Ari maps chapters to your knowledge level, generating an interactive schedule built for active recall."
+            description="ARIS maps chapters to your knowledge level, generating an interactive schedule built for active recall."
           />
           <FeatureCard 
             icon={<Zap className="w-5 h-5 text-primary" />}

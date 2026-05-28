@@ -7,7 +7,7 @@ import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { BookOpen, Brain, ArrowRight, Sparkles, Calendar, Target, Search } from "lucide-react";
+import { BookOpen, BrainCircuit, ArrowRight, Sparkles, Calendar, Target, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -28,8 +28,7 @@ export default function MyLearningPage() {
         const topicsCol = collection(db, "users", user.uid, "topics");
         const q = query(topicsCol, orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
-        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setTopics(list);
+        setTopics(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
       } catch (err) {
         console.error(err);
       } finally {
@@ -42,78 +41,80 @@ export default function MyLearningPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <BookOpen className="w-12 h-12 animate-pulse text-indigo-400" />
-        <p className="text-slate-400 animate-pulse text-xs">Assembling your custom roadmaps...</p>
+        <BrainCircuit className="w-10 h-10 animate-pulse text-primary" />
+        <p className="text-muted-foreground animate-pulse text-xs font-mono uppercase tracking-widest">Assembling your roadmaps...</p>
       </div>
     );
   }
 
-  const filteredTopics = topics.filter((topic) =>
-    topic.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    topic.goal?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTopics = topics.filter(
+    (topic) =>
+      topic.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      topic.goal?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
-      {/* Header Area */}
+
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black flex items-center gap-3 tracking-tight">
-            <BookOpen className="text-indigo-400 w-9 h-9" />
+          <h1 className="text-2xl font-bold flex items-center gap-3 tracking-wider text-foreground uppercase">
+            <BookOpen className="text-primary w-7 h-7" />
             My Learning Roadmaps
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Review and resume your customized learning roadmaps.</p>
+          <p className="text-muted-foreground text-xs mt-1">Review and resume your customized AI-generated learning roadmaps.</p>
         </div>
         <Link href="/dashboard/new-topic">
-          <Button className="bg-white text-black hover:bg-slate-200 font-bold px-5 h-11 rounded-xl shadow-md active:scale-95 ar-button-chunky text-xs">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider px-6 h-10 rounded-md cursor-pointer">
             Start New Topic
           </Button>
         </Link>
       </div>
 
-      {/* Main Roadmap Container */}
+      {/* Empty state */}
       {topics.length === 0 ? (
-        <Card className="playfulcard p-12 text-center flex flex-col items-center justify-center space-y-5 border-white/5 bg-slate-900/40">
-          <div className="w-20 h-20 bg-slate-950 rounded-full border border-white/5 flex items-center justify-center shadow-lg">
+        <Card className="p-12 text-center flex flex-col items-center justify-center space-y-5 border-border bg-card rounded-lg shadow-sm">
+          <div className="w-20 h-20 bg-primary/5 rounded-full border border-primary/20 flex items-center justify-center shadow-inner">
             <AriseMascot size={70} state="sleep" interactive={false} />
           </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white">Your Curriculum is Empty</h3>
-            <p className="text-slate-400 text-xs max-w-sm mx-auto">Use our adaptive AI tutor to design your first custom learning timeline in seconds.</p>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-foreground">Your Curriculum is Empty</h3>
+            <p className="text-muted-foreground text-xs max-w-sm mx-auto">Use our adaptive AI tutor to design your first custom learning timeline in seconds.</p>
           </div>
           <Link href="/dashboard/new-topic">
-            <Button className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:opacity-95 rounded-xl px-6 h-11 text-xs font-bold shadow-md ar-button-chunky">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider px-6 h-10 rounded-md cursor-pointer">
               Generate First Roadmap
             </Button>
           </Link>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* Search & Filtering Area */}
+        <div className="space-y-5">
+          {/* Search */}
           <div className="flex items-center w-full relative">
-            <Search className="w-5 h-5 text-slate-400 absolute left-4" />
-            <Input 
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5" />
+            <Input
               type="text"
-              placeholder="Search your learning roadmaps or goals..." 
+              placeholder="Search your learning roadmaps or goals..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-2xl h-12 w-full transition-all text-sm"
+              className="pl-10 bg-secondary/35 border-border text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-primary/30 focus-visible:border-primary rounded-md h-10 w-full transition-all text-xs"
             />
           </div>
 
           {filteredTopics.length === 0 ? (
-            <Card className="p-12 text-center border-slate-200 bg-slate-900/10 rounded-2xl">
-              <p className="text-slate-500 text-sm">No roadmaps match your search query.</p>
+            <Card className="p-12 text-center border-border bg-card rounded-lg shadow-sm">
+              <p className="text-muted-foreground text-xs">No roadmaps match your search query.</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-5">
               {filteredTopics.map((topic, index) => {
                 const completedCount = (topic.completedModules || []).length;
                 const totalCount = (topic.modules || []).length;
-                const dateStr = topic.createdAt 
-                  ? new Date(topic.createdAt.seconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) 
+                const dateStr = topic.createdAt
+                  ? new Date(topic.createdAt.seconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                   : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                
+
                 return (
                   <motion.div
                     initial={{ opacity: 0, y: 15 }}
@@ -123,39 +124,47 @@ export default function MyLearningPage() {
                     onClick={() => router.push(`/dashboard/learning/${topic.id}`)}
                     className="group cursor-pointer"
                   >
-                    <Card className="glasspanel p-6 border-slate-200/60 hover:border-indigo-500/25 transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden bg-slate-900/20">
-                      {/* Subtle hover glow accent */}
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-xl group-hover:bg-indigo-500/10 pointer-events-none transition-all duration-300" />
-                      
-                      <div className="space-y-3 flex-1">
+                    <Card className="p-6 border-border hover:border-primary/40 transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden bg-card shadow-sm rounded-lg">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-2xl group-hover:bg-primary/8 pointer-events-none transition-all duration-300" />
+
+                      <div className="space-y-3 flex-1 relative z-10">
                         <div className="flex flex-wrap items-center gap-2.5">
-                          <h3 className="text-lg font-bold text-white capitalize group-hover:text-cyan-300 transition-colors">
+                          <h3 className="text-sm font-bold text-foreground capitalize group-hover:text-primary transition-colors">
                             {topic.title}
                           </h3>
-                          <span className="text-[9px] font-extrabold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="text-[9px] font-bold text-primary bg-primary/8 border border-primary/20 px-2 py-0.5 rounded uppercase tracking-wider">
                             {topic.level || "Beginner"}
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-400">
-                          <span className="flex items-center gap-1"><Target className="w-3.5 h-3.5 text-indigo-400" /> Goal: {topic.goal || "Master Core Concepts"}</span>
-                          <span className="hidden sm:inline text-slate-600">•</span>
-                          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-pink-400" /> Created: {dateStr}</span>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Target className="w-3.5 h-3.5 text-primary/70" />
+                            Goal: {topic.goal || "Master Core Concepts"}
+                          </span>
+                          <span className="hidden sm:inline text-border">•</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-primary/70" />
+                            Created: {dateStr}
+                          </span>
                         </div>
-                        
-                        <div className="flex items-center gap-4 pt-2 max-w-md">
+
+                        <div className="flex items-center gap-4 pt-1 max-w-md">
                           <div className="flex-1 space-y-1">
-                            <Progress value={topic.progress || 0} className="h-1.5 bg-slate-950 border border-white/5 rounded-full [&>div]:bg-gradient-to-r [&>div]:from-cyan-400 [&>div]:to-indigo-500" />
+                            <div className="w-full bg-secondary/50 rounded-full h-1.5 overflow-hidden border border-border/50">
+                              <div
+                                className="h-full bg-primary rounded-full transition-all duration-500"
+                                style={{ width: `${topic.progress || 0}%` }}
+                              />
+                            </div>
                           </div>
-                          <span className="text-xs font-bold text-slate-300 shrink-0">
-                            {topic.progress || 0}% ({completedCount}/{totalCount} Modules)
+                          <span className="text-xs font-bold text-primary shrink-0 font-mono">
+                            {topic.progress || 0}% ({completedCount}/{totalCount})
                           </span>
                         </div>
                       </div>
 
-                      <Button 
-                        className="bg-white text-black hover:bg-slate-200 rounded-xl px-5 h-10 text-xs font-bold flex items-center gap-1.5 self-end md:self-auto shadow-sm active:scale-95 transition-all arbuttonchunky"
-                      >
+                      <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 rounded-md px-5 h-10 text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 self-end md:self-auto shadow-sm active:scale-[0.98] transition-all cursor-pointer relative z-10">
                         Resume Roadmap
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Button>

@@ -210,7 +210,7 @@ export default function NewTopicPage() {
                     />
                   </div>
                   <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-2.5 tracking-wider animate-pulse">
-                    Ari is dreaming up your path...
+                    ARIS is dreaming up your path...
                   </p>
                 </div>
 

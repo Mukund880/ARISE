@@ -8,6 +8,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { Brain } from "lucide-react";
 import { AITutorChat } from "@/components/AITutorChat";
 import { MascotProvider } from "@/context/MascotContext";
+import { motion } from "framer-motion";
 
 export default function DashboardLayout({
   children,
@@ -16,7 +17,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -45,12 +46,16 @@ export default function DashboardLayout({
 
         <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
         
-        <div className={`flex-1 ${isCollapsed ? "md:ml-20" : "md:ml-64"} flex flex-col min-h-screen relative z-10 transition-all duration-300`}>
+        <motion.div
+          animate={{ marginLeft: isCollapsed ? 64 : 256 }}
+          transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+          className="flex-1 flex flex-col min-h-screen relative z-10"
+        >
           <Topbar />
           <main className="flex-1 p-8 overflow-y-auto">
             {children}
           </main>
-        </div>
+        </motion.div>
 
         <AITutorChat />
       </div>

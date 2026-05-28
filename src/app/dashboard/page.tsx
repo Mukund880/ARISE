@@ -169,7 +169,7 @@ export default function DashboardPage() {
           <Sparkles className="w-4 h-4" />
         </div>
         <div className="text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground font-mono uppercase tracking-widest text-[9px] font-bold block mb-0.5">Ari's Daily Tip</strong>
+          <strong className="text-foreground font-mono uppercase tracking-widest text-[9px] font-bold block mb-0.5">ARIS's Daily Tip</strong>
           "Studying is all about consistency, not cramming. Choose a roadmap below, learn just one bite-sized module, and claim your rewards!"
         </div>
       </motion.div>

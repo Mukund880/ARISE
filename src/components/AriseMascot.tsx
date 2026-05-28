@@ -238,7 +238,7 @@ export function AriseMascot({
 
         {/* Museum Plaque Label */}
         <div className="text-[8px] font-mono tracking-[0.25em] text-primary font-bold uppercase select-none border-t border-border/40 pt-2 w-full text-center">
-          ARI // {currentMascotState}
+          ARIS // {currentMascotState}
         </div>
       </div>
     );

@@ -3,23 +3,123 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Users, Clock, Brain, UserCheck, Sparkles, BookOpen } from "lucide-react";
+import { GraduationCap, Users, Clock, Brain, UserCheck, Sparkles, BookOpen, Lock, Crown, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+const PAID_TIERS = ["polymath", "guild_master", "guildmaster", "guild master"];
+
+function isPaidUser(subscriptionTier?: string): boolean {
+  if (!subscriptionTier) return false;
+  return PAID_TIERS.includes(subscriptionTier.toLowerCase().trim());
+}
+
+function TeachersPaywall() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 px-4"
+    >
+      {/* Lock Icon */}
+      <div className="relative">
+        <div className="w-20 h-20 rounded-full bg-primary/8 border border-primary/20 flex items-center justify-center mx-auto">
+          <Lock className="w-9 h-9 text-primary/70" />
+        </div>
+        {/* Glow */}
+        <div className="absolute inset-0 w-20 h-20 rounded-full bg-primary/10 blur-2xl mx-auto pointer-events-none" />
+      </div>
+
+      {/* Headline */}
+      <div className="space-y-3">
+        <span className="text-[10px] font-mono tracking-widest text-primary font-bold uppercase">Premium Feature</span>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Instructor Portal is a<br />Subscription-Only Feature
+        </h1>
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+          The Instructor Portal — including classroom management, squad analytics, AI syllabus generation, and student roadmap assignment — is exclusively available to <strong className="text-foreground">Polymath</strong> and <strong className="text-foreground">Guild Master</strong> members.
+        </p>
+      </div>
+
+      {/* Feature bullets */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left max-w-lg">
+        {[
+          { icon: <Users className="w-3.5 h-3.5" />, label: "Manage class squads & students" },
+          { icon: <Brain className="w-3.5 h-3.5" />, label: "Assign custom AI roadmaps" },
+          { icon: <Sparkles className="w-3.5 h-3.5" />, label: "AI syllabus generation" },
+          { icon: <UserCheck className="w-3.5 h-3.5" />, label: "Real-time student analytics" },
+        ].map(({ icon, label }) => (
+          <div key={label} className="flex items-center gap-2.5 text-xs text-muted-foreground p-3 rounded-lg border border-border bg-card">
+            <span className="text-primary shrink-0">{icon}</span>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+        <Link href="/dashboard/pricing" className="flex-1">
+          <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-widest rounded-md cursor-pointer gap-2">
+            <Crown className="w-3.5 h-3.5" />
+            View Subscription Plans
+          </Button>
+        </Link>
+        <Link href="/dashboard" className="flex-1">
+          <Button variant="outline" className="w-full h-11 border-border text-foreground hover:bg-secondary/15 font-mono text-xs uppercase tracking-widest rounded-md cursor-pointer">
+            Back to Dashboard
+          </Button>
+        </Link>
+      </div>
+
+      {/* Fine print */}
+      <p className="text-[10px] text-muted-foreground font-mono tracking-wider">
+        Already subscribed? Your access will be reflected automatically after your plan activates.
+      </p>
+    </motion.div>
+  );
+}
 
 export default function TeachersPage() {
+  const { userProfile, loading } = useAuth();
+
   const squadStats = [
     { name: "CS-101 Introduction to AI", students: 18, activeTime: "420 mins/wk", accuracy: "84%", topic: "Machine Learning Basics" },
     { name: "Rust Systems Programming", students: 12, activeTime: "510 mins/wk", accuracy: "89%", topic: "Rust Programming" },
   ];
 
+  // Show loading skeleton while profile is still loading
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-8 pb-12">
+        <div className="h-16 rounded-lg bg-card border border-border animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-lg bg-card border border-border animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  // Block access if user is not on a paid tier
+  if (!isPaidUser(userProfile?.subscriptionTier)) {
+    return <TeachersPaywall />;
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="max-w-6xl mx-auto space-y-8 pb-12"
+    >
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-6">
         <div>
           <h1 className="text-xl font-bold tracking-wider text-foreground uppercase flex items-center gap-3">
             <GraduationCap className="text-primary w-6 h-6" />
-            Instructor Portal & Classrooms
+            Instructor Portal &amp; Classrooms
           </h1>
           <p className="text-muted-foreground text-xs mt-1">Manage your classrooms, assign custom roadmaps, and trace student learning aggregates in real time.</p>
         </div>
@@ -101,7 +201,7 @@ export default function TeachersPage() {
           Upload Class Material
         </Button>
       </Card>
-    </div>
+    </motion.div>
   );
 }
 

@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 level: 1,
                 rank: 'Rookie',
                 streak: 1,
+                subscriptionTier: 'scholar',
                 lastLogin: new Date(),
                 joinedAt: new Date()
               };
