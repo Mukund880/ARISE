@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Flame, Target, Trophy, Clock, BrainCircuit, Play, Sparkles, ArrowRight } from "lucide-react";
+import { Flame, Target, Trophy, Clock, BrainCircuit, Play, Sparkles, ArrowRight, Award } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
@@ -271,6 +271,43 @@ export default function DashboardPage() {
             <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Rank" value={userProfile?.rank || 'Rookie'} />
             <StatCard icon={<Target className="w-4 h-4 text-primary" />} label="Accuracy" value={`${userProfile?.quizAccuracy || 0}%`} />
             <StatCard icon={<Clock className="w-4 h-4 text-primary" />} label="Study Time" value={`${userProfile?.studyTime || 0} Mins`} />
+          </div>
+
+          {/* Leaderboard Section */}
+          <div className="pt-6 space-y-4">
+            <h2 className="text-lg font-bold tracking-wider text-foreground uppercase flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" />
+              Global Leaderboard
+            </h2>
+            <Card className="p-0 border-border bg-card rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden">
+              {leaderboard.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground font-mono uppercase tracking-widest flex flex-col items-center justify-center gap-3">
+                  <Award className="w-6 h-6 text-muted-foreground/30" />
+                  Loading rankings...
+                </div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {leaderboard.map((player, idx) => (
+                    <div key={player.uid} className={`flex items-center gap-3 p-4 transition-colors ${player.uid === user?.uid ? 'bg-primary/5' : 'hover:bg-secondary/20'}`}>
+                      <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold shrink-0 ${idx === 0 ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : idx === 1 ? 'bg-slate-300/20 text-slate-400 border border-slate-300/30' : idx === 2 ? 'bg-amber-700/20 text-amber-700 border border-amber-700/30' : 'bg-secondary text-muted-foreground'}`}>
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold truncate ${player.uid === user?.uid ? 'text-primary' : 'text-foreground'}`}>
+                          {player.displayName}
+                        </p>
+                        <p className="text-[9px] font-mono uppercase text-muted-foreground tracking-widest mt-0.5">
+                          Lvl {player.level || Math.floor((player.xp || 0) / 1000) + 1} • {player.rank}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-bold text-primary">{player.xp} XP</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </div>
