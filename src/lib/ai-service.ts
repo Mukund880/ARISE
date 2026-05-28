@@ -65,7 +65,7 @@ export class AIService {
         const cacheSnap = await getDoc(cacheRef);
         if (cacheSnap.exists()) {
           console.log(`[Cache Hit] Returning existing roadmap for key: ${cacheKey}`);
-          return cacheSnap.data().roadmap;
+          return (cacheSnap.data() as any).roadmap;
         }
       } catch (e) {
         console.warn("Failed to read from roadmap cache", e);
