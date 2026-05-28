@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-export type ThemeId = "gold" | "midnight" | "forest" | "rose" | "ocean" | "obsidian";
+export type ThemeId = "blue" | "midnight" | "forest" | "rose" | "ocean" | "obsidian";
 
 export interface ThemeDefinition {
   id: ThemeId;
@@ -15,10 +15,10 @@ export interface ThemeDefinition {
 
 export const THEMES: ThemeDefinition[] = [
   {
-    id: "gold",
-    name: "Scholar Gold",
-    description: "Warm alabaster & gold — the default ARISE look",
-    swatches: ["#FAF8F5", "#C5A880"],
+    id: "blue",
+    name: "Scholar Blue",
+    description: "Modern premium blue — the default ARISE look",
+    swatches: ["#FAFBFC", "#5B5FFF"],
     dark: false,
   },
   {
@@ -65,13 +65,13 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "gold",
+  theme: "blue",
   setTheme: () => {},
   themeDefinition: THEMES[0],
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>("gold");
+  const [theme, setThemeState] = useState<ThemeId>("blue");
 
   // Load from localStorage on mount
   useEffect(() => {
