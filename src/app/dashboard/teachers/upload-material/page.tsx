@@ -39,6 +39,15 @@ export default function UploadMaterialPage() {
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedSquad || !topic || !goal) return;
+    
+    // Check if selected squad has members
+    const squad = squads.find(s => s.id === selectedSquad);
+    const memberCount = squad?._count?.members || 0;
+    if (memberCount === 0) {
+      alert("This squad has no students yet. Please add students to the squad before generating a syllabus.");
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch("/api/generate-squad-syllabus", {
@@ -97,6 +106,12 @@ export default function UploadMaterialPage() {
                   <option key={s.id} value={s.id}>{s.name} ({s._count?.members || 0} students)</option>
                 ))}
               </select>
+              
+              {selectedSquad && squads.find(s => s.id === selectedSquad)?._count?.members === 0 && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 mt-2">
+                  ⚠️ This squad has no students yet. Invite students before generating a syllabus.
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -137,7 +152,11 @@ export default function UploadMaterialPage() {
               </div>
             </div>
 
-            <Button disabled={loading} type="submit" className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest">
+            <Button 
+              disabled={loading || !selectedSquad || squads.find(s => s.id === selectedSquad)?._count?.members === 0} 
+              type="submit" 
+              className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {loading ? "Generating & Distributing Syllabus..." : "Generate Syllabus"}
             </Button>
           </form>
