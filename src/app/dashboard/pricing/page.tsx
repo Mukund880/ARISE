@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Check, Sparkles } from "lucide-react";
+import { CreditCard, Check, Sparkles, Building2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -23,55 +23,68 @@ const loadScript = (src: string) => {
 export default function PricingPage() {
   const { user, userProfile } = useAuth();
   const [upgrading, setUpgrading] = useState(false);
+  const [currency, setCurrency] = useState<"USD" | "INR">("USD");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">("monthly");
 
   const isTeacher = userProfile?.role === "teacher";
+  const isPolymath = userProfile?.tier === "polymath";
 
   const tiers = [
     {
       name: "Scholar",
-      price: "$0",
+      price: currency === "USD" ? "$0" : "₹0",
+      priceValue: 0,
       period: "forever",
       desc: "Perfect for individual students seeking personalized roadmaps.",
       features: [
-        "Up to 3 active adaptive AI roadmaps",
+        "Up to 10 active adaptive AI roadmaps / month",
         "Generates standard visual aids and flowcharts",
         "Full access to local study sessions",
-        "10 daily AI tutoring chat credits",
         "Basic study metrics & tracking dashboard"
       ],
       cta: "Current Free Tier",
-      active: !isTeacher,
+      active: !isTeacher && !isPolymath,
       popular: false,
       isTeacherTier: false
     },
     {
       name: "Polymath",
-      price: "$12",
-      period: "per month",
+      price: currency === "USD" 
+        ? (billingCycle === "monthly" ? "$9" : "$99") 
+        : (billingCycle === "monthly" ? "₹89" : "₹1,199"),
+      priceValue: currency === "USD" 
+        ? (billingCycle === "monthly" ? 9 : 99) 
+        : (billingCycle === "monthly" ? 89 : 1199),
+      period: billingCycle === "monthly" ? "per month" : "per year",
       desc: "Unlock advanced memory systems and unlimited tutoring.",
       features: [
+        "Everything in Scholar plan",
         "Unlimited active adaptive AI roadmaps",
-        "Generates complex charts, math equations & graphs",
-        "Unlimited real-time interactive AI tutoring",
+        "Built-in code compiler to practice topics",
+        "Save and manage compiler programs",
         "Priority Pinecone RAG semantic indexing speeds",
-        "Full progress analytics & custom SVG charts",
-        "Early access to beta study modes"
+        "Full progress analytics & custom SVG charts"
       ],
-      cta: "Upgrade to Polymath",
-      active: false,
+      cta: isPolymath ? "Current Plan" : "Upgrade to Polymath",
+      active: isPolymath || isTeacher,
       popular: true,
       isTeacherTier: false
     },
     {
       name: "Guild Master",
-      price: "$49",
-      period: "per month",
+      price: currency === "USD" 
+        ? (billingCycle === "monthly" ? "$49" : "$559") 
+        : (billingCycle === "monthly" ? "₹4,799" : "₹56,999"),
+      priceValue: currency === "USD" 
+        ? (billingCycle === "monthly" ? 49 : 559) 
+        : (billingCycle === "monthly" ? 4799 : 56999),
+      period: billingCycle === "monthly" ? "per month" : "per year",
       desc: "For class squads, study circles, and peer guilds.",
       features: [
         "Everything included in Polymath plan",
-        "Invite up to 10 active study squad members",
-        "Collaborative syllabus generation options",
-        "Shared vector indexing databases",
+        "Invite up to 30 active study squad members",
+        "Teacher can share materials in the guild",
+        "Conduct live tests inside the guild",
         "Aggregated instructor stats dashboard link",
         "Dedicated cloud database sync intervals"
       ],
@@ -97,14 +110,13 @@ export default function PricingPage() {
       }
 
       try {
-        // Parse price from string (e.g. "$49" -> 49)
-        const priceNum = parseInt(tier.price.replace(/[^0-9]/g, ''));
+        const priceNum = tier.priceValue;
         
         // 1. Create order on our backend
         const orderRes = await fetch("/api/razorpay/create-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: priceNum, currency: "INR" }) // using INR for test accounts usually
+          body: JSON.stringify({ amount: priceNum, currency }) 
         });
         const orderData = await orderRes.json();
 
@@ -114,11 +126,11 @@ export default function PricingPage() {
 
         // 2. Open Razorpay Checkout Modal
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
           amount: orderData.order.amount,
           currency: orderData.order.currency,
           name: "Arise AI",
-          description: `Subscription to ${tier.name} Plan`,
+          description: `Subscription to ${tier.name} Plan (${billingCycle})`,
           order_id: orderData.order.id,
           handler: async function (response: any) {
             try {
@@ -137,7 +149,6 @@ export default function PricingPage() {
               if (verifyData.success) {
                 // 4. Payment Verified! Upgrade the user account!
                 const userRef = doc(db, "users", user.uid);
-                // If it's Guild Master, they are a teacher. Otherwise just normal premium student.
                 const newRole = tier.isTeacherTier ? "teacher" : "student";
                 
                 await updateDoc(userRef, { 
@@ -191,9 +202,44 @@ export default function PricingPage() {
           <CreditCard className="text-primary w-6 h-6" />
           Subscription Plans & Pricing
         </h1>
-        <p className="text-muted-foreground text-xs leading-normal">
+        <p className="text-muted-foreground text-xs leading-normal mb-6">
           Accelerate your retention speed. Upgrade to premium tiers to unlock unlimited personalized roadmaps, high-fidelity AI tutoring, and complex visualizers.
         </p>
+
+        {/* Toggles */}
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-8">
+          {/* Currency Toggle */}
+          <div className="flex items-center gap-2 bg-secondary/20 p-1 rounded-md border border-border/50">
+            <button 
+              onClick={() => setCurrency("USD")}
+              className={`px-4 py-1.5 text-xs font-mono uppercase tracking-widest rounded transition-colors ${currency === "USD" ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              USD ($)
+            </button>
+            <button 
+              onClick={() => setCurrency("INR")}
+              className={`px-4 py-1.5 text-xs font-mono uppercase tracking-widest rounded transition-colors ${currency === "INR" ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              INR (₹)
+            </button>
+          </div>
+
+          {/* Billing Cycle Toggle */}
+          <div className="flex items-center gap-2 bg-secondary/20 p-1 rounded-md border border-border/50">
+            <button 
+              onClick={() => setBillingCycle("monthly")}
+              className={`px-4 py-1.5 text-xs font-mono uppercase tracking-widest rounded transition-colors ${billingCycle === "monthly" ? "bg-card border border-border text-foreground font-bold" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Monthly
+            </button>
+            <button 
+              onClick={() => setBillingCycle("annually")}
+              className={`px-4 py-1.5 text-xs font-mono uppercase tracking-widest rounded transition-colors ${billingCycle === "annually" ? "bg-card border border-border text-foreground font-bold" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Annually <span className="text-[10px] text-primary ml-1">(Save 15%)</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Pricing Grids */}
@@ -251,6 +297,28 @@ export default function PricingPage() {
           </Card>
         ))}
       </div>
+
+      {/* Contact Sales Section */}
+      <div className="max-w-4xl mx-auto mt-16 border border-border bg-card/60 p-8 rounded-lg text-center flex flex-col md:flex-row items-center justify-between gap-6 transition-colors hover:border-primary/50">
+        <div className="text-left space-y-1.5 flex items-start gap-4">
+          <div className="bg-primary/10 p-3 rounded-full mt-1">
+            <Building2 className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground tracking-wide uppercase">Need an Enterprise or Custom Plan?</h3>
+            <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+              Looking for full API access, enterprise single sign-on (SSO), or hundreds of student seats for your entire institution? We can build a custom tier tailored specifically to your needs.
+            </p>
+          </div>
+        </div>
+        <Button 
+          onClick={() => window.location.href = "mailto:sales@arise-ai.com?subject=Enterprise Inquiry"}
+          className="shrink-0 bg-transparent border border-primary text-primary hover:bg-primary/10 h-10 px-6 font-mono tracking-widest text-xs uppercase"
+        >
+          Contact Sales
+        </Button>
+      </div>
+
     </div>
   );
 }
