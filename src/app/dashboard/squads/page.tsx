@@ -30,8 +30,9 @@ export default function SquadsPage() {
         const res = await fetch(`/api/social/squads?userId=${user.uid}`);
         if (!res.ok) throw new Error("Failed to fetch squads");
         const allSquads = await res.json();
-        // Show all squads
-        setSquads(allSquads);
+        // Only show squads the user has joined
+        const joinedSquads = allSquads.filter((s: any) => s.id === joinedSquadId);
+        setSquads(joinedSquads);
       } catch (err) {
         console.error("Error fetching squads:", err);
       } finally {
@@ -41,7 +42,7 @@ export default function SquadsPage() {
     if (user) fetchSquads();
   }, [user, joinedSquadId]);
 
-  async function handleJoin(e: React.FormEvent, squadId: string) {
+  async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !inviteCode) return;
     setJoining(true);
@@ -55,9 +56,8 @@ export default function SquadsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to join squad");
       
       alert("Successfully joined classroom squad!");
-      setJoinedSquadId(squadId);
+      setJoinedSquadId(data.squadId);
       setInviteCode("");
-      setSelectedJoinSquadId(null);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Invalid invite code.");
@@ -79,15 +79,32 @@ export default function SquadsPage() {
           <p className="text-muted-foreground text-xs mt-1">Your classroom squads created by teachers. Ask your instructor to add you to a squad.</p>
         </div>
 
-        {/* Mascot tip */}
-        <div className="flex items-center gap-3.5 bg-card border border-border px-4 py-2.5 rounded-lg max-w-sm shadow-sm relative overflow-hidden">
-          <div className="absolute -left-6 -top-6 w-16 h-16 bg-primary/5 rounded-full blur-xl pointer-events-none" />
-          <div className="w-10 h-10 shrink-0 flex items-center justify-center -ml-1">
-            <AriseMascot size={45} state="wave" interactive={false} />
-          </div>
-          <div className="text-[11px] text-muted-foreground leading-normal">
-            <strong className="text-foreground block font-bold mb-0.5">ARIS's Squad Advice</strong>
-            "Team up with others! Joining a study cohort pools your daily XP and helps dominate squad challenges!"
+        {/* Join Code Input and Mascot Tip */}
+        <div className="flex flex-col items-end gap-4">
+          {!joinedSquadId && (
+            <form onSubmit={handleJoin} className="flex gap-2">
+              <input 
+                required
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                placeholder="INVITE CODE"
+                className="w-40 bg-secondary/20 border border-border rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
+              />
+              <Button disabled={joining} type="submit" className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest shrink-0">
+                {joining ? "..." : "Join"}
+              </Button>
+            </form>
+          )}
+          
+          <div className="flex items-center gap-3.5 bg-card border border-border px-4 py-2.5 rounded-lg max-w-sm shadow-sm relative overflow-hidden">
+            <div className="absolute -left-6 -top-6 w-16 h-16 bg-primary/5 rounded-full blur-xl pointer-events-none" />
+            <div className="w-10 h-10 shrink-0 flex items-center justify-center -ml-1">
+              <AriseMascot size={45} state="wave" interactive={false} />
+            </div>
+            <div className="text-[11px] text-muted-foreground leading-normal">
+              <strong className="text-foreground block font-bold mb-0.5">ARIS's Squad Advice</strong>
+              "Team up with others! Joining a study cohort pools your daily XP and helps dominate squad challenges!"
+            </div>
           </div>
         </div>
       </div>
@@ -138,34 +155,12 @@ export default function SquadsPage() {
                       </span>
                     </div>
 
-                    {joinedSquadId === squad.id ? (
+                    {joinedSquadId === squad.id && (
                       <Button
                         disabled={true}
                         className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all cursor-default bg-primary/10 border border-primary/30 text-primary`}
                       >
                         ✓ Your Squad
-                      </Button>
-                    ) : selectedJoinSquadId === squad.id ? (
-                      <form onSubmit={(e) => handleJoin(e, squad.id)} className="flex gap-2">
-                        <input 
-                          required
-                          value={inviteCode}
-                          onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                          placeholder="CODE"
-                          className="w-full bg-secondary/20 border border-border rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
-                        />
-                        <Button disabled={joining} type="submit" className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest shrink-0">
-                          {joining ? "..." : "Join"}
-                        </Button>
-                      </form>
-                    ) : (
-                      <Button
-                        onClick={() => setSelectedJoinSquadId(squad.id)}
-                        variant="outline"
-                        disabled={!!joinedSquadId}
-                        className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all border-border text-foreground hover:bg-secondary/15`}
-                      >
-                        {joinedSquadId ? "Already in a Squad" : "Join Squad"}
                       </Button>
                     )}
                   </div>
