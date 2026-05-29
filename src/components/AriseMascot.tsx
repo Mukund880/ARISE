@@ -20,95 +20,6 @@ interface AriseMascotProps {
   framed?: boolean;
 }
 
-// Custom component to key out solid white backgrounds in standard .mp4 video files
-function TransparentVideo({ src, size }: { src: string; size: number }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    let animationFrameId: number;
-    const ctx = canvas.getContext("2d");
-
-    const renderFrame = () => {
-      if (video.paused || video.ended) {
-        animationFrameId = requestAnimationFrame(renderFrame);
-        return;
-      }
-
-      const width = canvas.width;
-      const height = canvas.height;
-
-      if (ctx) {
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(video, 0, 0, width, height);
-
-        const imgData = ctx.getImageData(0, 0, width, height);
-        const data = imgData.data;
-
-        // Chroma-key background: remove solid white pixels (R > 240, G > 240, B > 240)
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          if (r > 240 && g > 240 && b > 240) {
-            data[i + 3] = 0; // Alpha = 0
-          }
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-      }
-
-      animationFrameId = requestAnimationFrame(renderFrame);
-    };
-
-    const handlePlay = () => {
-      if (video.videoWidth) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-      }
-      renderFrame();
-    };
-
-    video.addEventListener("play", handlePlay);
-
-    // Set video attributes and start playback
-    video.src = src;
-    video.load();
-    video.play().catch((err) => {
-      console.warn("Video playback block prevention:", err);
-    });
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      video.removeEventListener("play", handlePlay);
-    };
-  }, [src]);
-
-  return (
-    <>
-      <video
-        ref={videoRef}
-        loop
-        muted
-        playsInline
-        className="hidden"
-        crossOrigin="anonymous"
-      />
-      <canvas
-        ref={canvasRef}
-        width={size}
-        height={size}
-        className="w-full h-full object-contain"
-      />
-    </>
-  );
-}
-
 export function AriseMascot({
   state: localState = "idle",
   size = 120,
@@ -159,32 +70,6 @@ export function AriseMascot({
   };
 
   const currentMascotState = getActiveState();
-
-  // Map state to MP4 videos if available
-  const getVideoForState = (currentState: MascotState) => {
-    const map: Record<string, string> = {
-      loading: "loading.mp4",
-      searching: "loading.mp4",
-      thinking: "loading.mp4",
-      processing: "loading.mp4",
-      uploading: "loading.mp4",
-      downloading: "loading.mp4",
-      
-      presenting: "presenting.mp4",
-      pointing: "presenting.mp4",
-      
-      teaching: "teaching.mp4",
-      focused: "teaching.mp4",
-      working: "teaching.mp4",
-      reading: "teaching.mp4",
-      scanning: "teaching.mp4",
-      
-      waving: "waving.mp4",
-      bye_bye: "waving.mp4",
-      wave: "waving.mp4"
-    };
-    return map[currentState] || null;
-  };
 
   // Maps design-system states to the 40 cropped image filenames
   const getImageForState = (currentState: MascotState) => {
@@ -243,7 +128,6 @@ export function AriseMascot({
   };
 
   const isLowEnergy = currentMascotState === "sleepy" || currentMascotState === "good_night" || currentMascotState === "sleep";
-  const videoFile = getVideoForState(currentMascotState);
 
   const mascotContent = (
     <div
@@ -267,12 +151,14 @@ export function AriseMascot({
         style={{ top: "15%", zIndex: 0 }}
       />
 
-      {/* Main Mascot Content View with Organic Float, Sway & Wiggle */}
-      <motion.div
+      {/* Main Mascot Image View with Organic Float, Sway & Wiggle */}
+      <motion.img
+        src={`/assets/${getImageForState(currentMascotState)}`}
+        alt="Aris Mascot"
         animate={{
-          // Float (y-translation) of exactly 1.5px up and down
+          // Ultra-smooth float (y-translation) of exactly 1.5px up and down
           y: isLowEnergy ? [-0.8, 0.8, -0.8] : [-1.5, 1.5, -1.5],
-          // Sway and wiggle
+          // Smooth sway mixed with a periodic wiggle (rotate keyframes)
           rotate: isLowEnergy 
             ? [0, -0.6, 0.6, -0.6, 0] 
             : [0, -1.5, 1.5, -1.5, 0, 0, -3.5, 3.5, -3.5, 3.5, -2, 2, -1, 0, 0, 1.5, -1.5, 0]
@@ -311,19 +197,9 @@ export function AriseMascot({
                 ]
           }
         }}
-        className="w-full h-full flex items-center justify-center drop-shadow-[0_8px_18px_rgba(197,168,128,0.2)]"
+        className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(197,168,128,0.2)]"
         style={{ zIndex: 1 }}
-      >
-        {videoFile ? (
-          <TransparentVideo src={`/assets/${videoFile}`} size={size} />
-        ) : (
-          <img
-            src={`/assets/${getImageForState(currentMascotState)}`}
-            alt="Aris Mascot"
-            className="w-full h-full object-contain"
-          />
-        )}
-      </motion.div>
+      />
 
       {/* Volumetric Floating Base Shadow */}
       <motion.div
@@ -351,16 +227,16 @@ export function AriseMascot({
         }`}
         style={{ width: size + 40 }}
       >
-        {/* Corner Ornaments */}
+        {/* Inner Gold Accents at Corners */}
         <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t border-l border-primary/55 pointer-events-none" />
         <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t border-r border-primary/55 pointer-events-none" />
         <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b border-l border-primary/55 pointer-events-none" />
         <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b border-r border-primary/55 pointer-events-none" />
 
-        {/* Mascot Element */}
+        {/* Mascot Mascot Image Container */}
         {mascotContent}
 
-        {/* Status Label */}
+        {/* Museum Plaque Label */}
         <div className="text-[8px] font-mono tracking-[0.25em] text-primary font-bold uppercase select-none border-t border-border/40 pt-2 w-full text-center">
           ARIS // {currentMascotState}
         </div>
