@@ -7,20 +7,22 @@ export interface Notification {
   desc: string;
   createdAt: string;
   read: boolean;
+  link?: string;
 }
 
 export class NotificationService {
   /**
    * Send a notification to a specific user
    */
-  static async sendNotification(userId: string, title: string, desc: string) {
+  static async sendNotification(userId: string, title: string, desc: string, link?: string) {
     try {
       const notifRef = collection(db, 'users', userId, 'notifications');
       await addDoc(notifRef, {
         title,
         desc,
         createdAt: new Date().toISOString(),
-        read: false
+        read: false,
+        ...(link ? { link } : {})
       });
     } catch (err) {
       console.error(`Error sending notification to user ${userId}:`, err);
@@ -30,7 +32,7 @@ export class NotificationService {
   /**
    * Send notification to all members of a squad
    */
-  static async notifySquadMembers(squadId: string, title: string, desc: string) {
+  static async notifySquadMembers(squadId: string, title: string, desc: string, link?: string) {
     try {
       // Find all users who are members of this squad
       const usersRef = collection(db, 'users');
@@ -41,7 +43,7 @@ export class NotificationService {
       });
 
       const promises = members.map(memberDoc => 
-        this.sendNotification(memberDoc.id, title, desc)
+        this.sendNotification(memberDoc.id, title, desc, link)
       );
       await Promise.all(promises);
     } catch (err) {

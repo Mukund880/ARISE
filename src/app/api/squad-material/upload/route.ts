@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     
     await fs.writeFile(filePath, buffer);
 
-    const fileUrl = `/uploads/squads/${squadId}/${fileName}`;
+    const fileUrl = `/api/uploads/squads/${squadId}/${fileName}`;
 
     return NextResponse.json({ 
       success: true, 

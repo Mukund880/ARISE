@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,14 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   ArrowLeft, Users, FileText, CheckSquare, Brain, Plus, Trash2, Calendar, 
   Upload, Download, Award, Clock, Target, Eye, X, BookOpen, AlertCircle,
-  Paperclip, ExternalLink
+  Paperclip, ExternalLink, Send, MessageSquare, Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { db, storage } from "@/lib/firebase";
 import { 
   doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteDoc, 
-  query, where, onSnapshot, arrayUnion, arrayRemove, addDoc 
+  query, where, onSnapshot, arrayUnion, arrayRemove, addDoc,
+  increment, orderBy
 } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,6 +43,14 @@ interface StudentAnalytics {
       url: string;
       type: string;
     }>;
+    status?: "pending" | "accepted" | "rejected";
+    feedback?: string | null;
+  }>;
+  testScores?: Array<{
+    testId: string;
+    score: number;
+    total: number;
+    takenAt: string;
   }>;
   lastActive?: string;
 }
@@ -50,6 +59,8 @@ export default function TeacherSquadConsole() {
   const { squadId } = useParams() as { squadId: string };
   const { user, userProfile } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
 
   // Squad details state
   const [squad, setSquad] = useState<any>(null);
@@ -57,6 +68,15 @@ export default function TeacherSquadConsole() {
   const [analytics, setAnalytics] = useState<Record<string, StudentAnalytics>>({});
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Selected Student sub-tab state
+  const [selectedStudentTab, setSelectedStudentTab] = useState<"analytics" | "submissions" | "chat">("analytics");
+
+  // Teacher direct messages with selected student
+  const [teacherChatMessages, setTeacherChatMessages] = useState<any[]>([]);
+  const [teacherChatText, setTeacherChatText] = useState("");
+  const [sendingTeacherChat, setSendingTeacherChat] = useState(false);
+  const teacherChatEndRef = useRef<HTMLDivElement>(null);
 
   // Tabs state
   const [activeTab, setActiveTab] = useState<"students" | "notes" | "assignments" | "tests">("students");
@@ -396,6 +416,147 @@ export default function TeacherSquadConsole() {
     }
   };
 
+  // 10.5 Load Tab Query & Real-time student chat
+  useEffect(() => {
+    if (tabParam && ["students", "notes", "assignments", "tests"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
+
+  useEffect(() => {
+    if (!squadId || !selectedStudent || selectedStudentTab !== "chat") return;
+
+    const chatsRef = collection(db, "squads", squadId, "chats");
+    const q = query(chatsRef, where("studentId", "==", selectedStudent.id), orderBy("createdAt", "asc"));
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setTeacherChatMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setTimeout(() => teacherChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    });
+
+    return () => unsubscribe();
+  }, [squadId, selectedStudent, selectedStudentTab]);
+
+  const handleSendTeacherChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teacherChatText.trim() || !user || !selectedStudent) return;
+
+    setSendingTeacherChat(true);
+    try {
+      const chatsRef = collection(db, "squads", squadId, "chats");
+      await addDoc(chatsRef, {
+        studentId: selectedStudent.id,
+        senderId: user.uid,
+        senderName: userProfile?.displayName || user.displayName || "Instructor",
+        text: teacherChatText.trim(),
+        createdAt: new Date().toISOString()
+      });
+      setTeacherChatText("");
+    } catch (err) {
+      console.error("Error sending teacher chat:", err);
+      alert("Failed to send message.");
+    } finally {
+      setSendingTeacherChat(false);
+    }
+  };
+
+  const handleReviewSubmission = async (studentId: string, assignmentId: string, action: "accept" | "reject") => {
+    const confirmMsg = action === "accept" 
+      ? "Accept this student's submission and reward the XP?" 
+      : "Reject this student's submission?";
+    if (!confirm(confirmMsg)) return;
+
+    let feedback = "";
+    if (action === "reject") {
+      feedback = prompt("Provide feedback to the student explaining the rejection (optional):") || "";
+    }
+
+    try {
+      const analyticsRef = doc(db, "squads", squadId, "analytics", studentId);
+      const analyticsSnap = await getDoc(analyticsRef);
+      if (!analyticsSnap.exists()) return;
+
+      const studentStats = analyticsSnap.data() as StudentAnalytics;
+      const currentSubmissions = studentStats.submissions || [];
+      
+      const updatedSubmissions = currentSubmissions.map((sub: any) => {
+        if (sub.assignmentId === assignmentId) {
+          return { ...sub, status: action === "accept" ? "accepted" : "rejected", feedback: feedback || null };
+        }
+        return sub;
+      });
+
+      const assignment = assignments.find(a => a.id === assignmentId);
+      const xpReward = assignment?.xpReward || 100;
+
+      if (action === "accept") {
+        await updateDoc(analyticsRef, {
+          submissions: updatedSubmissions,
+          completedAssignments: arrayUnion(assignmentId),
+          assignmentsCompleted: increment(1),
+          xpEarned: increment(xpReward)
+        });
+
+        const studentUserRef = doc(db, "users", studentId);
+        const studentSnap = await getDoc(studentUserRef);
+        if (studentSnap.exists()) {
+          const studentProfile = studentSnap.data();
+          const currentXp = Number(studentProfile.xp) || 0;
+          const newXp = currentXp + xpReward;
+          const newLevel = Math.floor(newXp / 1000) + 1;
+          let newRank = "Rookie";
+          if (newLevel >= 15) newRank = "Grandmaster";
+          else if (newLevel >= 10) newRank = "Master";
+          else if (newLevel >= 5) newRank = "Scholar";
+
+          await updateDoc(studentUserRef, {
+            xp: newXp,
+            level: newLevel,
+            rank: newRank
+          });
+
+          try {
+            await fetch("/api/gamification/sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uid: studentId,
+                email: studentProfile.email,
+                displayName: studentProfile.displayName || 'Scholar',
+                xp: newXp,
+                level: newLevel,
+                rank: newRank
+              })
+            });
+          } catch {}
+        }
+
+        await NotificationService.sendNotification(
+          studentId,
+          "Work Approved! 🎉",
+          `Your work for "${assignment?.title || 'Assignment'}" has been approved! +${xpReward} XP awarded.`,
+          `/dashboard/squads/${squadId}?tab=assignments`
+        );
+        alert("Submission approved and student rewarded!");
+      } else {
+        await updateDoc(analyticsRef, {
+          submissions: updatedSubmissions
+        });
+
+        await NotificationService.sendNotification(
+          studentId,
+          "Work Rejected ❌",
+          `Your work for "${assignment?.title || 'Assignment'}" was rejected.${feedback ? ' Feedback: ' + feedback : ' Please review and resubmit.'}`,
+          `/dashboard/squads/${squadId}?tab=assignments`
+        );
+        alert("Submission rejected. Student has been notified.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error reviewing work.");
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse text-xs font-mono uppercase tracking-widest">Assembling squad console...</div>;
   if (!squad) return <div className="p-8 text-center text-destructive">Classroom squad not found.</div>;
 
@@ -472,7 +633,10 @@ export default function TeacherSquadConsole() {
                     return (
                       <div 
                         key={student.id} 
-                        onClick={() => setSelectedStudent(student)}
+                        onClick={() => {
+                          setSelectedStudent(student);
+                          setSelectedStudentTab("analytics");
+                        }}
                         className={`flex items-center justify-between p-4 hover:bg-secondary/10 transition-colors cursor-pointer ${selectedStudent?.id === student.id ? 'bg-primary/5 border-l-2 border-primary' : ''}`}
                       >
                         <div>
@@ -528,122 +692,286 @@ export default function TeacherSquadConsole() {
                         testsTaken: 0,
                         quizAccuracy: 0,
                         totalQuestionsAttempted: 0,
-                        totalQuestionsCorrect: 0
+                        totalQuestionsCorrect: 0,
+                        submissions: [],
+                        testScores: []
                       };
                       return (
                         <div className="space-y-5">
-                          <p className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Squad Specific Analytics</p>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
-                              <Award className="w-4 h-4 text-primary mx-auto mb-1.5" />
-                              <p className="text-sm font-bold text-foreground">{stats.xpEarned}</p>
-                              <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Earned XP</p>
-                            </div>
-                            <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
-                              <Clock className="w-4 h-4 text-primary mx-auto mb-1.5" />
-                              <p className="text-sm font-bold text-foreground">{stats.studyTime} MIN</p>
-                              <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Study Time</p>
-                            </div>
-                            <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
-                              <Target className="w-4 h-4 text-primary mx-auto mb-1.5" />
-                              <p className="text-sm font-bold text-foreground">{stats.quizAccuracy}%</p>
-                              <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Test Accuracy</p>
-                            </div>
-                            <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
-                              <CheckSquare className="w-4 h-4 text-primary mx-auto mb-1.5" />
-                              <p className="text-sm font-bold text-foreground">{stats.assignmentsCompleted}</p>
-                              <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Completed work</p>
-                            </div>
+                          {/* Segmented control tabs */}
+                          <div className="flex gap-1.5 bg-secondary/15 p-1 rounded-lg border border-border">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudentTab("analytics")}
+                              className={`flex-1 py-1.5 text-[9px] font-mono uppercase tracking-wider rounded transition-all ${
+                                selectedStudentTab === "analytics"
+                                  ? "bg-primary text-primary-foreground font-bold shadow"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              Stats & Tests
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudentTab("submissions")}
+                              className={`flex-1 py-1.5 text-[9px] font-mono uppercase tracking-wider rounded transition-all ${
+                                selectedStudentTab === "submissions"
+                                  ? "bg-primary text-primary-foreground font-bold shadow"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              Work ({stats.submissions?.length || 0})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudentTab("chat")}
+                              className={`flex-1 py-1.5 text-[9px] font-mono uppercase tracking-wider rounded transition-all ${
+                                selectedStudentTab === "chat"
+                                  ? "bg-primary text-primary-foreground font-bold shadow"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              Chat
+                            </button>
                           </div>
 
-                          <div className="border-t border-border/40 pt-4 space-y-2">
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>Questions Answered:</span>
-                              <span className="font-mono text-foreground font-bold">{stats.totalQuestionsAttempted || 0}</span>
-                            </div>
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>Questions Correct:</span>
-                              <span className="font-mono text-green-600 font-bold">{stats.totalQuestionsCorrect || 0}</span>
-                            </div>
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>Tests Completed:</span>
-                              <span className="font-mono text-foreground font-bold">{stats.testsTaken || 0}</span>
-                            </div>
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>Last Active inside Squad:</span>
-                              <span className="font-mono text-foreground">{stats.lastActive ? new Date(stats.lastActive).toLocaleDateString() : "Never"}</span>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-border/40 pt-4 space-y-3">
-                            <p className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Submissions ({stats.submissions?.length || 0})</p>
-                            {(!stats.submissions || stats.submissions.length === 0) ? (
-                              <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider text-center py-4 bg-secondary/5 border border-border/40 border-dashed rounded-md">No assignment submissions yet</p>
-                            ) : (
-                              <div className="space-y-3">
-                                {stats.submissions.map((sub, idx) => {
-                                  const assignment = assignments.find(a => a.id === sub.assignmentId);
-                                  return (
-                                    <div key={idx} className="p-3 bg-secondary/15 border border-border/40 rounded-lg space-y-2">
-                                      <div className="flex justify-between items-start gap-2">
-                                        <p className="text-xs font-bold text-foreground line-clamp-1">{assignment ? assignment.title : "Unknown Assignment"}</p>
-                                        <span className="text-[8px] text-muted-foreground font-mono shrink-0">{new Date(sub.submittedAt).toLocaleDateString()}</span>
-                                      </div>
-                                      
-                                      {sub.text && (
-                                        <p className="text-[11px] text-muted-foreground whitespace-pre-wrap p-2 bg-background border border-border/40 rounded-md italic">
-                                          {sub.text}
-                                        </p>
-                                      )}
-
-                                      {sub.attachments && sub.attachments.length > 0 && (
-                                        <div className="space-y-1.5 pt-1">
-                                          <p className="text-[9px] font-mono text-muted-foreground font-bold uppercase">Attachments:</p>
-                                          <div className="grid grid-cols-1 gap-1.5">
-                                            {sub.attachments.map((att, attIdx) => {
-                                              const isImage = att.type?.toLowerCase().includes("image") || 
-                                                              att.name?.toLowerCase().endsWith(".jpg") || 
-                                                              att.name?.toLowerCase().endsWith(".jpeg") || 
-                                                              att.name?.toLowerCase().endsWith(".png") ||
-                                                              att.name?.toLowerCase().endsWith(".gif");
-                                              return (
-                                                <div key={attIdx} className="flex flex-col p-2 bg-background/50 border border-border/40 rounded-md gap-2">
-                                                  <div className="flex items-center justify-between min-w-0">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                      <Paperclip className="w-3 h-3 text-primary shrink-0" />
-                                                      <span className="text-[9px] font-mono text-foreground truncate">{att.name}</span>
-                                                    </div>
-                                                    <a 
-                                                      href={att.url} 
-                                                      target="_blank" 
-                                                      rel="noreferrer"
-                                                      className="p-1 text-primary hover:bg-primary/10 rounded-md shrink-0 transition-colors"
-                                                    >
-                                                      <ExternalLink className="w-3.5 h-3.5" />
-                                                    </a>
-                                                  </div>
-                                                  {isImage && (
-                                                    <div className="border border-border/40 rounded overflow-hidden max-h-[120px] bg-black/5 flex justify-center">
-                                                      <img 
-                                                        src={att.url} 
-                                                        alt={att.name} 
-                                                        className="object-contain max-h-[120px] w-auto"
-                                                      />
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                          {selectedStudentTab === "analytics" && (
+                            <div className="space-y-5">
+                              <p className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Squad Specific Analytics</p>
+                              
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
+                                  <Award className="w-4 h-4 text-primary mx-auto mb-1.5" />
+                                  <p className="text-sm font-bold text-foreground">{stats.xpEarned}</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Earned XP</p>
+                                </div>
+                                <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
+                                  <Clock className="w-4 h-4 text-primary mx-auto mb-1.5" />
+                                  <p className="text-sm font-bold text-foreground">{stats.studyTime} MIN</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Study Time</p>
+                                </div>
+                                <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
+                                  <Target className="w-4 h-4 text-primary mx-auto mb-1.5" />
+                                  <p className="text-sm font-bold text-foreground">{stats.quizAccuracy}%</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Test Accuracy</p>
+                                </div>
+                                <div className="p-3 bg-secondary/15 rounded-md border border-border/50 text-center">
+                                  <CheckSquare className="w-4 h-4 text-primary mx-auto mb-1.5" />
+                                  <p className="text-sm font-bold text-foreground">{stats.assignmentsCompleted}</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mt-0.5">Completed work</p>
+                                </div>
                               </div>
-                            )}
-                          </div>
+
+                              <div className="border-t border-border/40 pt-4 space-y-2">
+                                <div className="flex justify-between text-[10px] text-muted-foreground">
+                                  <span>Questions Answered:</span>
+                                  <span className="font-mono text-foreground font-bold">{stats.totalQuestionsAttempted || 0}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-muted-foreground">
+                                  <span>Questions Correct:</span>
+                                  <span className="font-mono text-green-600 font-bold">{stats.totalQuestionsCorrect || 0}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-muted-foreground">
+                                  <span>Tests Completed:</span>
+                                  <span className="font-mono text-foreground font-bold">{stats.testsTaken || 0}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-muted-foreground">
+                                  <span>Last Active inside Squad:</span>
+                                  <span className="font-mono text-foreground">{stats.lastActive ? new Date(stats.lastActive).toLocaleDateString() : "Never"}</span>
+                                </div>
+                              </div>
+
+                              {/* Test Scores Review Deck */}
+                              <div className="border-t border-border/40 pt-4 space-y-3">
+                                <p className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Practice Test Scores ({stats.testScores?.length || 0})</p>
+                                {(!stats.testScores || stats.testScores.length === 0) ? (
+                                  <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider text-center py-4 bg-secondary/5 border border-border/40 border-dashed rounded-md">No test scores recorded yet</p>
+                                ) : (
+                                  <div className="space-y-2.5">
+                                    {stats.testScores.map((score, sIdx) => {
+                                      const testObj = tests.find(t => t.id === score.testId);
+                                      const scorePercent = Math.round((score.score / score.total) * 100);
+                                      return (
+                                        <div key={sIdx} className="p-3 bg-secondary/15 border border-border/40 rounded-lg flex justify-between items-center gap-3">
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-bold text-foreground truncate">{testObj ? testObj.title : "Unknown Quiz"}</p>
+                                            <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{scorePercent}% Accuracy • {new Date(score.takenAt).toLocaleDateString()}</p>
+                                          </div>
+                                          <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded font-mono shrink-0">
+                                            {score.score}/{score.total}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedStudentTab === "submissions" && (
+                            <div className="space-y-3">
+                              <p className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Work Submissions ({stats.submissions?.length || 0})</p>
+                              {(!stats.submissions || stats.submissions.length === 0) ? (
+                                <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider text-center py-4 bg-secondary/5 border border-border/40 border-dashed rounded-md">No assignment submissions yet</p>
+                              ) : (
+                                <div className="space-y-3.5">
+                                  {stats.submissions.map((sub, idx) => {
+                                    const assignment = assignments.find(a => a.id === sub.assignmentId);
+                                    const status = sub.status || "pending";
+                                    return (
+                                      <div key={idx} className="p-3 bg-secondary/15 border border-border/40 rounded-lg space-y-2.5">
+                                        <div className="flex justify-between items-start gap-2">
+                                          <div>
+                                            <p className="text-xs font-bold text-foreground line-clamp-1">{assignment ? assignment.title : "Unknown Assignment"}</p>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                              {status === "accepted" && (
+                                                <span className="text-[8px] font-mono font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 uppercase">Approved</span>
+                                              )}
+                                              {status === "rejected" && (
+                                                <span className="text-[8px] font-mono font-bold text-destructive bg-destructive/5 px-1.5 py-0.5 rounded border border-destructive/20 uppercase">Rejected</span>
+                                              )}
+                                              {status === "pending" && (
+                                                <span className="text-[8px] font-mono font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 uppercase">Pending Review</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <span className="text-[8px] text-muted-foreground font-mono shrink-0">{new Date(sub.submittedAt).toLocaleDateString()}</span>
+                                        </div>
+                                        
+                                        {sub.text && (
+                                          <p className="text-[11px] text-muted-foreground whitespace-pre-wrap p-2 bg-background border border-border/40 rounded-md italic">
+                                            {sub.text}
+                                          </p>
+                                        )}
+                                        
+                                        {sub.feedback && (
+                                          <p className="text-[10px] text-destructive bg-destructive/5 p-2 rounded-md border border-destructive/10">
+                                            <strong className="font-bold">Feedback:</strong> {sub.feedback}
+                                          </p>
+                                        )}
+
+                                        {sub.attachments && sub.attachments.length > 0 && (
+                                          <div className="space-y-1.5 pt-1">
+                                            <p className="text-[9px] font-mono text-muted-foreground font-bold uppercase">Attachments:</p>
+                                            <div className="grid grid-cols-1 gap-1.5">
+                                              {sub.attachments.map((att, attIdx) => {
+                                                const isImage = att.type?.toLowerCase().includes("image") || 
+                                                                att.name?.toLowerCase().endsWith(".jpg") || 
+                                                                att.name?.toLowerCase().endsWith(".jpeg") || 
+                                                                att.name?.toLowerCase().endsWith(".png") ||
+                                                                att.name?.toLowerCase().endsWith(".gif");
+                                                return (
+                                                  <div key={attIdx} className="flex flex-col p-2 bg-background/50 border border-border/40 rounded-md gap-2">
+                                                    <div className="flex items-center justify-between min-w-0">
+                                                      <div className="flex items-center gap-1.5 min-w-0">
+                                                        <Paperclip className="w-3 h-3 text-primary shrink-0" />
+                                                        <span className="text-[9px] font-mono text-foreground truncate">{att.name}</span>
+                                                      </div>
+                                                      <a 
+                                                        href={att.url} 
+                                                        target="_blank" 
+                                                        rel="noreferrer"
+                                                        className="p-1 text-primary hover:bg-primary/10 rounded-md shrink-0 transition-colors"
+                                                      >
+                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                      </a>
+                                                    </div>
+                                                    {isImage && (
+                                                      <div className="border border-border/40 rounded overflow-hidden max-h-[120px] bg-black/5 flex justify-center">
+                                                        <img 
+                                                          src={att.url} 
+                                                          alt={att.name} 
+                                                          className="object-contain max-h-[120px] w-auto"
+                                                        />
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {status === "pending" && (
+                                          <div className="flex gap-2 pt-2">
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              onClick={() => handleReviewSubmission(selectedStudent.id, sub.assignmentId, "accept")}
+                                              className="flex-1 h-8 bg-green-600 hover:bg-green-755 text-white font-mono text-[9px] uppercase tracking-wider rounded cursor-pointer"
+                                            >
+                                              Accept
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              onClick={() => handleReviewSubmission(selectedStudent.id, sub.assignmentId, "reject")}
+                                              className="flex-1 h-8 bg-destructive hover:bg-destructive/90 text-white font-mono text-[9px] uppercase tracking-wider rounded cursor-pointer"
+                                            >
+                                              Reject
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {selectedStudentTab === "chat" && (
+                            <div className="space-y-4 flex flex-col h-[400px]">
+                              {/* Message bubbles container */}
+                              <div className="flex-1 overflow-y-auto space-y-3 p-2 bg-secondary/5 border border-border/40 rounded-lg max-h-[300px]">
+                                {teacherChatMessages.length === 0 ? (
+                                  <div className="h-full flex flex-col justify-center items-center text-center text-muted-foreground text-[10px] font-mono uppercase tracking-wider py-12">
+                                    No chat history yet. Send a message to start direct chat.
+                                  </div>
+                                ) : (
+                                  teacherChatMessages.map((msg) => {
+                                    const isMe = msg.senderId === user?.uid;
+                                    return (
+                                      <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[80%] rounded-lg p-2.5 text-[11px] leading-relaxed ${
+                                          isMe 
+                                            ? 'bg-primary text-primary-foreground font-bold rounded-tr-none shadow-sm' 
+                                            : 'bg-secondary/25 text-foreground border border-border/30 rounded-tl-none font-medium'
+                                        }`}>
+                                          <div className="flex justify-between items-center gap-4 mb-0.5">
+                                            <span className="font-mono text-[8px] font-bold opacity-80">{isMe ? 'You' : msg.senderName}</span>
+                                            <span className="text-[7px] font-mono opacity-60">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                          <p className="whitespace-pre-wrap">{msg.text}</p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                                <div ref={teacherChatEndRef} />
+                              </div>
+
+                              {/* Input panel */}
+                              <form onSubmit={handleSendTeacherChat} className="flex gap-2">
+                                <Input
+                                  required
+                                  value={teacherChatText}
+                                  onChange={e => setTeacherChatText(e.target.value)}
+                                  placeholder="Reply to student..."
+                                  className="bg-secondary/20 border-border text-xs rounded-md h-9"
+                                  disabled={sendingTeacherChat}
+                                />
+                                <Button 
+                                  type="submit" 
+                                  disabled={sendingTeacherChat || !teacherChatText.trim()}
+                                  className="h-9 w-9 p-0 bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center shrink-0 rounded-md cursor-pointer"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                </Button>
+                              </form>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}

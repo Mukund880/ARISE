@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { BookOpen, BrainCircuit, ArrowRight, Sparkles, Calendar, Target, Search } from "lucide-react";
+import { BookOpen, BrainCircuit, ArrowRight, Sparkles, Calendar, Target, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -37,6 +37,24 @@ export default function MyLearningPage() {
     }
     fetchTopics();
   }, [user]);
+
+  const handleDeleteTopic = async (e: React.MouseEvent, topicId: string, topicTitle: string) => {
+    e.stopPropagation();
+    if (!user) return;
+    if (!confirm(`Are you sure you want to delete and exit the roadmap for "${topicTitle}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const topicRef = doc(db, "users", user.uid, "topics", topicId);
+      await deleteDoc(topicRef);
+      setTopics(prev => prev.filter(t => t.id !== topicId));
+      alert(`Roadmap "${topicTitle}" successfully deleted.`);
+    } catch (err) {
+      console.error("Error deleting roadmap:", err);
+      alert("Failed to delete roadmap.");
+    }
+  };
 
   if (loading) {
     return (
@@ -164,10 +182,20 @@ export default function MyLearningPage() {
                         </div>
                       </div>
 
-                      <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 rounded-md px-5 h-10 text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 self-end md:self-auto shadow-sm active:scale-[0.98] transition-all cursor-pointer relative z-10">
-                        Resume Roadmap
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-3.5 self-end md:self-auto relative z-10 shrink-0">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => handleDeleteTopic(e, topic.id, topic.title)}
+                          className="h-10 w-10 text-destructive hover:bg-destructive/10 hover:text-destructive border border-transparent hover:border-destructive/20 rounded-md"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 rounded-md px-5 h-10 text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+                          Resume Roadmap
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </Card>
                   </motion.div>
                 );

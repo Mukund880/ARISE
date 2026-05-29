@@ -350,15 +350,38 @@ export function Topbar() {
                     No notifications
                   </div>
                 ) : (
-                  notifications.map((notif) => (
-                    <div key={notif.id} className={`p-2 hover:bg-secondary/15 rounded-md transition-colors text-left ${!notif.read ? 'bg-primary/5' : ''}`}>
-                      <div className="flex justify-between items-start mb-0.5">
-                        <p className="text-[10px] font-bold text-foreground">{notif.title}</p>
-                        <span className="text-[8px] text-muted-foreground font-mono">{formatTime(notif.createdAt)}</span>
+                  notifications.map((notif) => {
+                    const content = (
+                      <>
+                        <div className="flex justify-between items-start mb-0.5">
+                          <p className="text-[10px] font-bold text-foreground">{notif.title}</p>
+                          <span className="text-[8px] text-muted-foreground font-mono">{formatTime(notif.createdAt)}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground leading-normal">{notif.desc}</p>
+                      </>
+                    );
+
+                    const classes = `p-2 hover:bg-secondary/15 rounded-md transition-colors text-left block w-full ${!notif.read ? 'bg-primary/5' : ''}`;
+
+                    if (notif.link) {
+                      return (
+                        <Link 
+                          key={notif.id}
+                          href={notif.link}
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className={classes}
+                        >
+                          {content}
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <div key={notif.id} className={classes}>
+                        {content}
                       </div>
-                      <p className="text-[10px] text-muted-foreground leading-normal">{notif.desc}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

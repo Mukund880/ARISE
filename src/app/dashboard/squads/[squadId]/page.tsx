@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,13 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   ArrowLeft, FileText, CheckSquare, Brain, Download, 
   Award, Clock, Target, Eye, X, BookOpen, AlertCircle, Play,
-  Camera, Paperclip, Trash2, Loader2
+  Camera, Paperclip, Trash2, Loader2, Send, MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { 
   doc, getDoc, getDocs, collection, setDoc, updateDoc, 
-  query, where, onSnapshot, arrayUnion, increment 
+  query, where, onSnapshot, arrayUnion, increment, addDoc, orderBy
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { NotificationService } from "@/services/notification.service";
@@ -41,6 +41,8 @@ interface StudentAnalytics {
       url: string;
       type: string;
     }>;
+    status?: "pending" | "accepted" | "rejected";
+    feedback?: string | null;
   }>;
   testScores?: Array<{
     testId: string;
@@ -54,13 +56,15 @@ export default function StudentSquadPortal() {
   const { squadId } = useParams() as { squadId: string };
   const { user, userProfile } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
 
   // Squad data
   const [squad, setSquad] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"performance" | "notes" | "assignments" | "tests">("performance");
+  const [activeTab, setActiveTab] = useState<"performance" | "notes" | "assignments" | "tests" | "chat">("performance");
 
   // Student Squad Analytics State
   const [myAnalytics, setMyAnalytics] = useState<StudentAnalytics | null>(null);
@@ -79,6 +83,12 @@ export default function StudentSquadPortal() {
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Chat states
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatText, setChatText] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Active test taker modal
   const [activeTest, setActiveTest] = useState<any>(null);
@@ -169,6 +179,60 @@ export default function StudentSquadPortal() {
       setUploadedAttachments([]);
     }
   }, [viewingAssignment]);
+
+  // Set tab from URL param if valid
+  useEffect(() => {
+    if (tabParam && ["performance", "notes", "assignments", "tests", "chat"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
+
+  // Load chat messages with teacher in real-time
+  useEffect(() => {
+    if (!squadId || !user || activeTab !== "chat") return;
+
+    const chatsRef = collection(db, "squads", squadId, "chats");
+    const q = query(chatsRef, where("studentId", "==", user.uid), orderBy("createdAt", "asc"));
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setChatMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    });
+
+    return () => unsubscribe();
+  }, [squadId, user, activeTab]);
+
+  const handleSendChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatText.trim() || !user || !squad) return;
+
+    setSendingChat(true);
+    try {
+      const chatsRef = collection(db, "squads", squadId, "chats");
+      await addDoc(chatsRef, {
+        studentId: user.uid,
+        senderId: user.uid,
+        senderName: userProfile?.displayName || user.displayName || "Scholar",
+        text: chatText.trim(),
+        createdAt: new Date().toISOString()
+      });
+
+      // Send real-time notification to the squad instructor
+      await NotificationService.sendNotification(
+        squad.ownerId,
+        "New Message from Student",
+        `${userProfile?.displayName || user.displayName || "Scholar"} sent you a message in squad "${squad.name}".`,
+        `/dashboard/teachers/squad/${squadId}?tab=students`
+      );
+
+      setChatText("");
+    } catch (err) {
+      console.error("Error sending chat message:", err);
+      alert("Failed to send message.");
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   // 3. Increment study time inside squad when studying notes (simulated bonus)
   const handleStudyMaterial = async (materialTitle: string) => {
@@ -284,58 +348,36 @@ export default function StudentSquadPortal() {
         assignmentId: viewingAssignment.id,
         submittedAt: new Date().toISOString(),
         text: submissionText,
-        attachments: uploadedAttachments
+        attachments: uploadedAttachments,
+        status: "pending" as const,
+        feedback: null
       };
 
+      const currentSubmissions = myAnalytics?.submissions || [];
+      let updatedSubmissions = [];
+      const existingSubIdx = currentSubmissions.findIndex(s => s.assignmentId === viewingAssignment.id);
+      if (existingSubIdx > -1) {
+        updatedSubmissions = [...currentSubmissions];
+        updatedSubmissions[existingSubIdx] = newSubmission;
+      } else {
+        updatedSubmissions = [...currentSubmissions, newSubmission];
+      }
+
       // Update student's squad analytics document
+      // Note: We DO NOT increment assignmentsCompleted, completedAssignments, or xpEarned. 
+      // Defer all of those until approved by teacher.
       await updateDoc(myAnalyticsRef, {
-        completedAssignments: arrayUnion(viewingAssignment.id),
-        assignmentsCompleted: increment(1),
-        xpEarned: increment(viewingAssignment.xpReward),
-        studyTime: increment(5), // 5 min bonus for completing assignment
-        lastActive: new Date().toISOString(),
-        submissions: arrayUnion(newSubmission)
+        submissions: updatedSubmissions,
+        lastActive: new Date().toISOString()
       });
-
-      // Update student's global user document (increment XP and study time)
-      const userRef = doc(db, "users", user.uid);
-      const currentXp = Number(userProfile?.xp) || 0;
-      const newXp = currentXp + (viewingAssignment.xpReward || 100);
-      const newLevel = Math.floor(newXp / 1000) + 1;
-      let newRank = "Rookie";
-      if (newLevel >= 15) newRank = "Grandmaster";
-      else if (newLevel >= 10) newRank = "Master";
-      else if (newLevel >= 5) newRank = "Scholar";
-
-      await updateDoc(userRef, {
-        xp: newXp,
-        level: newLevel,
-        rank: newRank,
-        studyTime: increment(5)
-      });
-
-      // Sync XP
-      try {
-        await fetch("/api/gamification/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            uid: user.uid,
-            email: user.email,
-            displayName: userProfile?.displayName || 'Scholar',
-            xp: newXp,
-            level: newLevel,
-            rank: newRank
-          })
-        });
-      } catch {}
 
       // Notify the teacher (squad owner)
       const studentName = userProfile?.displayName || user.displayName || "Scholar";
       await NotificationService.sendNotification(
         squad.ownerId,
         "Assignment Submission Received",
-        `${studentName} submitted work for "${viewingAssignment.title}" in squad ${squad.name}.`
+        `${studentName} submitted work for "${viewingAssignment.title}" in squad ${squad.name}.`,
+        `/dashboard/teachers/squad/${squadId}?tab=students`
       );
 
       alert("Work submitted successfully!");
@@ -523,6 +565,12 @@ export default function StudentSquadPortal() {
           >
             Tests
           </button>
+          <button 
+            onClick={() => setActiveTab("chat")} 
+            className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-md transition-all ${activeTab === "chat" ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Chat
+          </button>
         </div>
       </div>
 
@@ -636,34 +684,70 @@ export default function StudentSquadPortal() {
               <div className="divide-y divide-border/50">
                 {assignments.map((assign) => {
                   const isCompleted = myAnalytics?.completedAssignments?.includes(assign.id) || false;
+                  const submission = myAnalytics?.submissions?.find(s => s.assignmentId === assign.id);
+                  const status = submission?.status || (submission ? "pending" : null);
+
                   return (
-                    <div key={assign.id} className="p-4 hover:bg-secondary/10 transition-colors flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2.5 bg-primary/5 border border-primary/20 rounded-lg text-primary shrink-0 mt-0.5">
-                          <CheckSquare className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm text-foreground truncate">{assign.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{assign.desc}</p>
-                          <div className="flex flex-wrap items-center gap-3 mt-2 text-[9px] font-mono font-bold uppercase text-muted-foreground">
-                            <span className="flex items-center gap-1 text-primary"><Award className="w-3 h-3 text-primary" /> +{assign.xpReward} XP</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1 text-amber-600">Due: {assign.dueDate}</span>
+                    <div key={assign.id} className="p-4 hover:bg-secondary/10 transition-colors flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="p-2.5 bg-primary/5 border border-primary/20 rounded-lg text-primary shrink-0 mt-0.5">
+                            <CheckSquare className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-foreground truncate">{assign.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{assign.desc}</p>
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-[9px] font-mono font-bold uppercase text-muted-foreground">
+                              <span className="flex items-center gap-1 text-primary"><Award className="w-3 h-3 text-primary" /> +{assign.xpReward} XP</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1 text-amber-600">Due: {assign.dueDate}</span>
+                            </div>
                           </div>
                         </div>
+                        
+                        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                          {status === "accepted" && (
+                            <span className="text-[9px] font-mono tracking-wider font-bold text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded uppercase whitespace-nowrap">
+                              Completed ✓
+                            </span>
+                          )}
+                          {status === "pending" && (
+                            <span className="text-[9px] font-mono tracking-wider font-bold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded uppercase whitespace-nowrap">
+                              Pending Review ⏳
+                            </span>
+                          )}
+                          {status === "rejected" && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-mono tracking-wider font-bold text-destructive bg-destructive/5 border border-destructive/20 px-3 py-1.5 rounded uppercase whitespace-nowrap">
+                                Rejected ❌
+                              </span>
+                              <Button 
+                                onClick={() => {
+                                  setViewingAssignment(assign);
+                                  setSubmissionText(submission?.text || "");
+                                  setUploadedAttachments(submission?.attachments || []);
+                                }}
+                                className="bg-primary text-primary-foreground hover:bg-primary/95 text-[10px] font-mono uppercase tracking-wider h-8 px-3 shrink-0 cursor-pointer"
+                              >
+                                Re-submit
+                              </Button>
+                            </div>
+                          )}
+                          {!status && (
+                            <Button 
+                              onClick={() => setViewingAssignment(assign)}
+                              className="bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-mono uppercase tracking-wider h-9 px-4 shrink-0 cursor-pointer"
+                            >
+                              Submit Work
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      
-                      {isCompleted ? (
-                        <span className="text-[9px] font-mono tracking-wider font-bold text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded uppercase self-start sm:self-center whitespace-nowrap">
-                          Completed ✓
-                        </span>
-                      ) : (
-                        <Button 
-                          onClick={() => setViewingAssignment(assign)}
-                          className="bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-mono uppercase tracking-wider h-9 px-4 shrink-0 self-start sm:self-center cursor-pointer"
-                        >
-                          Submit Work
-                        </Button>
+
+                      {status === "rejected" && submission?.feedback && (
+                        <div className="ml-12 p-3 bg-destructive/5 border border-destructive/10 rounded-md text-xs text-destructive">
+                          <strong className="font-bold">Rejection Feedback:</strong> {submission.feedback}
+                        </div>
                       )}
                     </div>
                   );
@@ -726,6 +810,68 @@ export default function StudentSquadPortal() {
                 })}
               </div>
             )}
+          </Card>
+        )}
+
+        {/* Tab 5: Chat with Teacher */}
+        {activeTab === "chat" && squad && (
+          <Card className="p-6 border-border bg-card rounded-lg flex flex-col h-[500px]">
+            <div className="flex justify-between items-center pb-4 border-b border-border/40 mb-4">
+              <div>
+                <h3 className="text-xs font-mono uppercase tracking-widest text-primary font-bold">Squad Chat Channel</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Private channel with your squad instructor</p>
+              </div>
+            </div>
+
+            {/* Messages container */}
+            <div className="flex-1 overflow-y-auto space-y-3 p-3 bg-secondary/5 border border-border/40 rounded-lg mb-4">
+              {chatMessages.length === 0 ? (
+                <div className="h-full flex flex-col justify-center items-center text-center text-muted-foreground text-[10.5px] font-mono uppercase tracking-widest leading-loose py-20">
+                  No messages yet. <br />
+                  Send a message to contact your instructor.
+                </div>
+              ) : (
+                chatMessages.map((msg) => {
+                  const isMe = msg.senderId === user?.uid;
+                  return (
+                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] rounded-lg p-3 text-xs leading-relaxed ${
+                        isMe 
+                          ? 'bg-primary text-primary-foreground font-bold rounded-tr-none shadow-sm' 
+                          : 'bg-secondary/25 text-foreground border border-border/30 rounded-tl-none font-medium'
+                      }`}>
+                        <div className="flex justify-between items-center gap-4 mb-0.5">
+                          <span className="font-mono text-[8px] font-bold opacity-80">{isMe ? 'You' : msg.senderName}</span>
+                          <span className="text-[7.5px] font-mono opacity-60">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Chat Send Form */}
+            <form onSubmit={handleSendChat} className="flex gap-2">
+              <Input
+                required
+                value={chatText}
+                onChange={e => setChatText(e.target.value)}
+                placeholder="Type your message to instructor..."
+                className="bg-secondary/20 border-border text-xs rounded-md h-10 focus:border-primary/50"
+                disabled={sendingChat}
+              />
+              <Button 
+                type="submit" 
+                disabled={sendingChat || !chatText.trim()}
+                className="h-10 px-5 bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center shrink-0 rounded-md cursor-pointer animate-none font-mono text-xs uppercase tracking-wider"
+              >
+                <Send className="w-4 h-4 mr-1.5" />
+                Send
+              </Button>
+            </form>
           </Card>
         )}
 
