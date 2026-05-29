@@ -71,60 +71,60 @@ export function AriseMascot({
 
   const currentMascotState = getActiveState();
 
-  // Maps design-system states to the 40 cropped image filenames
+  // Maps design-system states to the custom mascot image filenames in /assets/aris/
   const getImageForState = (currentState: MascotState) => {
     const map: Record<string, string> = {
-      idle: "aris_idle.png",
-      waving: "aris_waving.png",
-      loading: "aris_loading.png",
-      searching: "aris_searching.png",
-      thinking: "aris_thinking.png",
-      idea: "aris_idea.png",
-      excited: "aris_excited.png",
-      happy: "aris_happy.png",
-      confused: "aris_confused.png",
-      sad: "aris_sad.png",
-      sleepy: "aris_sleepy.png",
-      surprised: "aris_surprised.png",
-      focused: "aris_focused.png",
-      working: "aris_working.png",
-      reading: "aris_reading.png",
-      scanning: "aris_scanning.png",
-      success: "aris_success.png",
-      error: "aris_error.png",
-      warning: "aris_warning.png",
-      processing: "aris_processing.png",
-      uploading: "aris_uploading.png",
-      downloading: "aris_downloading.png",
-      celebrating: "aris_celebrating.png",
-      thumbs_up: "aris_thumbs_up.png",
-      pointing: "aris_pointing.png",
-      presenting: "aris_presenting.png",
-      teaching: "aris_teaching.png",
-      cheering: "aris_cheering.png",
-      love: "aris_love.png",
-      motivated: "aris_motivated.png",
-      relaxed: "aris_relaxed.png",
-      good_night: "aris_good_night.png",
-      waiting: "aris_waiting.png",
-      bored: "aris_bored.png",
-      overwhelmed: "aris_overwhelmed.png",
-      determined: "aris_determined.png",
-      great_job: "aris_great_job.png",
-      acknowledged: "aris_acknowledged.png",
-      high_five: "aris_high_five.png",
-      bye_bye: "aris_bye_bye.png",
+      idle: "idle.png",
+      waving: "waving.png",
+      loading: "loading.png",
+      searching: "searching.png",
+      thinking: "thinking.png",
+      idea: "idea.png",
+      excited: "excited.png",
+      happy: "happy.png",
+      confused: "confused.png",
+      sad: "sad.png",
+      sleepy: "sleepy.png",
+      surprised: "suprised.png",
+      focused: "focused.png",
+      working: "working.png",
+      reading: "reading.png",
+      scanning: "scanning.png",
+      success: "success.png",
+      error: "error.png",
+      warning: "warning.png",
+      processing: "processing.png",
+      uploading: "uploading.png",
+      downloading: "downloading.png",
+      celebrating: "celebrating.png",
+      thumbs_up: "thumbsup.png",
+      pointing: "pointing.png",
+      presenting: "presenting.png",
+      teaching: "teaching.png",
+      cheering: "cheering.png",
+      love: "love.png",
+      motivated: "motivated.png",
+      relaxed: "relaxed.png",
+      good_night: "goodnight.png",
+      waiting: "waiting.png",
+      bored: "bored.png",
+      overwhelmed: "overwhelmed.png",
+      determined: "determined.png",
+      great_job: "greatjob.png",
+      acknowledged: "acknowleged.png",
+      high_five: "highfive.png",
+      bye_bye: "waving.png",
 
       // Legacy fallback mappings
-      sleep: "aris_sleepy.png",
-      reflect: "aris_relaxed.png",
-      cheer: "aris_cheering.png",
-      proud: "aris_great_job.png",
-      wave: "aris_waving.png",
-      celebrate: "aris_celebrating.png",
+      sleep: "sleepy.png",
+      reflect: "relaxed.png",
+      cheer: "cheering.png",
+      proud: "greatjob.png",
+      wave: "waving.png",
+      celebrate: "celebrating.png",
     };
 
-    return map[currentState] || "aris_idle.png";
+    return map[currentState] || "idle.png";
   };
 
   const isLowEnergy = currentMascotState === "sleepy" || currentMascotState === "good_night" || currentMascotState === "sleep";
@@ -153,7 +153,7 @@ export function AriseMascot({
 
       {/* Main Mascot Image View with Organic Float, Sway & Wiggle */}
       <motion.img
-        src={`/assets/${getImageForState(currentMascotState)}`}
+        src={`/assets/aris/${getImageForState(currentMascotState)}`}
         alt="Aris Mascot"
         animate={{
           // Ultra-smooth float (y-translation) of exactly 1.5px up and down
