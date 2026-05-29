@@ -29,6 +29,11 @@ export default function NewTopicPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
+  // Google Knowledge Graph Autocomplete states
+  const [kgEntities, setKgEntities] = useState<any[]>([]);
+  const [loadingKg, setLoadingKg] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -46,6 +51,33 @@ export default function NewTopicPage() {
     else if (step === 3) triggerEmotion("focused", 2200);
     else if (step === 4) triggerEmotion("happy", 2200);
   }, [step, isGenerating]);
+
+  // Debounced Knowledge Graph Search suggestions fetching
+  useEffect(() => {
+    if (!topic || topic.trim().length < 2) {
+      setKgEntities([]);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setLoadingKg(true);
+      try {
+        const res = await fetch(`/api/knowledge-graph?query=${encodeURIComponent(topic)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.entities) {
+            setKgEntities(data.entities);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch Knowledge Graph suggestions:", e);
+      } finally {
+        setLoadingKg(false);
+      }
+    }, 450); // 450ms debounce
+
+    return () => clearTimeout(handler);
+  }, [topic]);
 
   const handleNext = () => setStep((s) => Math.min(s + 1, totalSteps));
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
@@ -234,16 +266,65 @@ export default function NewTopicPage() {
                     </div>
                     
                     <div className="space-y-3 pt-4">
-                      <Label className="text-sm font-bold text-slate-650">Topic Name</Label>
-                      <Input 
-                        placeholder="e.g., Quantum Mechanics, React Next.js, Organic Chemistry..." 
-                        className="h-14 text-base bg-white border-slate-200 text-slate-850 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 rounded-xl transition-all"
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && isStepValid()) handleNext();
-                        }}
-                      />
+                      <Label className="text-sm font-bold text-slate-655">Topic Name</Label>
+                      <div className="relative">
+                        <Input 
+                          placeholder="e.g., Quantum Mechanics, React Next.js, Organic Chemistry..." 
+                          className="h-14 text-base bg-white border-slate-200 text-slate-850 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 rounded-xl transition-all pr-12"
+                          value={topic}
+                          onChange={(e) => {
+                            setTopic(e.target.value);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && isStepValid()) handleNext();
+                          }}
+                        />
+                        {loadingKg && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
+                            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                        
+                        {/* Dropdown Suggestions */}
+                        {showSuggestions && kgEntities.length > 0 && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -5 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            className="absolute z-30 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto"
+                          >
+                            {kgEntities.map((ent, idx) => (
+                              <div 
+                                key={idx}
+                                onClick={() => {
+                                  setTopic(ent.name);
+                                  setShowSuggestions(false);
+                                }}
+                                className="p-3.5 hover:bg-indigo-50/50 cursor-pointer transition-colors flex items-center justify-between text-left gap-3"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-slate-800">{ent.name}</p>
+                                  {ent.description && (
+                                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate">{ent.description}</p>
+                                  )}
+                                </div>
+                                {ent.imageUrl && (
+                                  <img 
+                                    src={ent.imageUrl} 
+                                    alt={ent.name} 
+                                    className="w-8 h-8 rounded-lg object-cover border border-slate-100 shrink-0" 
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}
