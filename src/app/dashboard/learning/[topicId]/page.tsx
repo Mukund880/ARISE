@@ -643,7 +643,7 @@ export default function AdaptiveLearningPage() {
               onClick={() => router.push(`/dashboard/learning/${topicId}/test`)}
               className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold rounded-xl animate-pulse w-full h-11 text-xs ar-button-chunky shadow-md"
             >
-              Take Final Test <Trophy className="w-4 h-4 ml-2" />
+              Take Grand Test <Trophy className="w-4 h-4 ml-2" />
             </Button>
           )}
         </div>

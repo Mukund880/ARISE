@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle, Lightbulb, Code, Type, LayoutGrid, Award, HelpCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Lightbulb, HelpCircle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { AriseMascot } from "@/components/AriseMascot";
 import { useMascot } from "@/context/MascotContext";
@@ -15,91 +14,74 @@ interface PracticeModuleProps {
 
 export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProps) {
   const { triggerEmotion } = useMascot();
+
+  // Extract questions supporting both single legacy question and new quizQuestions array
+  const questions = lessonContent.quizQuestions && Array.isArray(lessonContent.quizQuestions)
+    ? lessonContent.quizQuestions
+    : [
+        {
+          question: lessonContent.quizQuestion || "Check your understanding",
+          options: lessonContent.quizOptions || ["Understand", "Review", "Reflect", "Complete"],
+          correctOptionIndex: lessonContent.correctOptionIndex !== undefined ? lessonContent.correctOptionIndex : 0,
+          hint: lessonContent.hint || "Review the lesson material above."
+        }
+      ];
+
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [fillBlankValue, setFillBlankValue] = useState("");
   const [showHint, setShowHint] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [firstTryCorrect, setFirstTryCorrect] = useState(true);
 
+  const currentQ = questions[currentQuestionIdx] || questions[0];
+
   const checkMcqAnswer = (index: number) => {
     setSelectedAnswer(index);
-    const correct = index === lessonContent.correctOptionIndex;
+    const correct = index === currentQ.correctOptionIndex;
     setIsCorrect(correct);
     if (correct) {
       triggerEmotion("success", 2500);
-      setTimeout(() => onComplete({ correct: firstTryCorrect }), 1600);
     } else {
       setFirstTryCorrect(false);
       triggerEmotion("confused", 2500);
     }
   };
 
-  const checkFillBlankAnswer = () => {
-    if (!fillBlankValue.trim()) return;
-    const isMatch = fillBlankValue.trim().toLowerCase() === (lessonContent.fillBlankAnswer || "").toLowerCase();
-    setIsCorrect(isMatch);
-    if (isMatch) {
-      triggerEmotion("success", 2500);
-      setTimeout(() => onComplete({ correct: firstTryCorrect }), 1600);
+  const handleNext = () => {
+    if (currentQuestionIdx < questions.length - 1) {
+      setCurrentQuestionIdx(prev => prev + 1);
+      setSelectedAnswer(null);
+      setIsCorrect(null);
+      setShowHint(false);
     } else {
-      setFirstTryCorrect(false);
-      triggerEmotion("confused", 2500);
+      onComplete({ correct: firstTryCorrect });
     }
   };
 
   const renderExercise = () => {
-    if (lessonContent.exerciseType === "FillInBlank" || lessonContent.fillBlankQuestion) {
-      const parts = (lessonContent.fillBlankQuestion || "").split(/_{3,}/);
-      
-      return (
-        <div className="space-y-6 mt-4">
-          <div className="bg-[#FAF9F6] border border-slate-200/60 rounded-2xl p-6 text-sm md:text-base leading-relaxed text-slate-700 font-semibold shadow-inner">
-            {parts[0]}
-            <Input 
-              className={`inline-block w-40 mx-2 text-center h-9 bg-white border-slate-200 focus:border-indigo-500 text-slate-800 font-bold rounded-lg transition-all ${
-                isCorrect === true ? "border-green-500 text-green-600 focus:border-green-500" : 
-                isCorrect === false ? "border-pink-500 text-pink-600 focus:border-pink-500" : ""
-              }`}
-              value={fillBlankValue}
-              onChange={(e) => {
-                setFillBlankValue(e.target.value);
-                setIsCorrect(null);
-              }}
-              placeholder="Your answer..."
-              onKeyDown={(e) => e.key === "Enter" && checkFillBlankAnswer()}
-            />
-            {parts[1]}
-          </div>
-
-          <Button 
-            onClick={checkFillBlankAnswer}
-            disabled={!fillBlankValue.trim() || isCorrect === true}
-            className={`w-full h-12 rounded-xl font-bold transition-all shadow-md active:scale-95 arbuttonchunky text-xs ${
-              isCorrect === true ? "bg-green-50 border border-green-200 text-green-600 cursor-default" : 
-              isCorrect === false ? "bg-pink-50 border border-pink-200 text-pink-600" : 
-              "bg-indigo-600 text-white hover:bg-indigo-750"
-            }`}
-          >
-            {isCorrect === true ? "Correct! Ingesting XP..." : isCorrect === false ? "Try Again" : "Submit Answer"}
-          </Button>
-        </div>
-      );
-    }
-
-    // Default to MCQ
     return (
       <div className="space-y-5 mt-4">
+        {/* Navigation Indicator / Header */}
+        <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 bg-slate-100 border border-slate-200/50 px-3 py-1.5 rounded-lg font-bold">
+          <span>QUESTION {currentQuestionIdx + 1} OF {questions.length}</span>
+          {selectedAnswer !== null && (
+            <span className={isCorrect ? "text-green-600 uppercase font-black" : "text-rose-600 uppercase font-black"}>
+              {isCorrect ? "CORRECT ✓" : "INCORRECT ❌"}
+            </span>
+          )}
+        </div>
+
         <div className="flex items-start gap-2.5 bg-indigo-50 border border-indigo-100 p-4 rounded-2xl">
           <HelpCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-          <p className="text-sm font-bold leading-relaxed text-slate-700">{lessonContent.quizQuestion}</p>
+          <p className="text-sm font-bold leading-relaxed text-slate-700">{currentQ.question}</p>
         </div>
 
         <div className="space-y-3">
-          {lessonContent.quizOptions?.map((option: string, i: number) => {
+          {currentQ.options?.map((option: string, i: number) => {
             const isSelected = selectedAnswer === i;
-            const isCorrectOption = i === lessonContent.correctOptionIndex;
+            const isCorrectOption = i === currentQ.correctOptionIndex;
             
-            let btnClass = "bg-[#FAF9F6] border-slate-200 text-slate-655 hover:bg-slate-50 hover:border-indigo-500/20 hover:text-slate-800";
+            let btnClass = "bg-[#FAF9F6] border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-indigo-500/20 hover:text-slate-800";
             
             if (selectedAnswer !== null) {
               if (isSelected) {
@@ -107,7 +89,6 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
                   ? "bg-green-50 border-green-500 text-green-600 shadow-[0_0_10px_rgba(16,185,129,0.05)] font-bold" 
                   : "bg-pink-50 border-pink-500 text-pink-650 shadow-[0_0_10px_rgba(244,63,94,0.05)] font-bold";
               } else if (isCorrectOption) {
-                // Highlight correct option if they failed
                 btnClass = "bg-green-50/60 border-green-200 text-green-600 opacity-80 font-bold";
               } else {
                 btnClass = "bg-slate-50 border-slate-100 text-slate-400 opacity-40 cursor-default";
@@ -145,6 +126,22 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
             Try Again
           </Button>
         )}
+
+        {isCorrect === true && (
+          <Button
+            onClick={handleNext}
+            className="w-full h-12 bg-green-600 text-white hover:bg-green-700 font-bold rounded-xl text-xs shadow-md active:scale-95 arbuttonchunky mt-2 flex items-center justify-center gap-1.5"
+          >
+            {currentQuestionIdx < questions.length - 1 ? (
+              <>
+                <span>Next Question</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : (
+              <span>Complete Module</span>
+            )}
+          </Button>
+        )}
       </div>
     );
   };
@@ -157,7 +154,6 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
       </div>
 
       <div className="flex items-center gap-2 text-indigo-500 font-bold text-xs uppercase tracking-wider mb-5 border-b border-slate-100 pb-3">
-        <LayoutGrid className="w-4 h-4" />
         <span>Understanding Check</span>
       </div>
 
@@ -167,7 +163,7 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
         <Button 
           variant="ghost" 
           size="sm"
-          className="text-slate-405 text-slate-500 hover:text-amber-600 transition-colors text-xs font-bold rounded-xl h-8 px-3"
+          className="text-slate-500 hover:text-amber-600 transition-colors text-xs font-bold rounded-xl h-8 px-3"
           onClick={() => {
             const nextShow = !showHint;
             setShowHint(nextShow);
@@ -186,7 +182,7 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
             animate={{ opacity: 1, height: "auto" }}
             className="mt-3.5 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 leading-relaxed font-semibold shadow-inner"
           >
-            {lessonContent.hint}
+            {currentQ.hint}
           </motion.div>
         )}
       </div>

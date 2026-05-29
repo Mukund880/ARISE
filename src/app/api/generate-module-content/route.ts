@@ -27,10 +27,26 @@ export async function POST(req: Request) {
       {
         "explanation": "A detailed, massive, GeeksforGeeks-grade markdown explanation of the module. Must be 1500+ words, containing rich paragraphs, headers, bullet points, Markdown comparison tables, and copyable code blocks.",
         "exerciseType": "MCQ",
-        "quizQuestion": "A high-quality question to test understanding of the material",
-        "quizOptions": ["Option A", "Option B", "Option C", "Option D"],
-        "correctOptionIndex": 0,
-        "hint": "A detailed explanation of why the correct option is correct.",
+        "quizQuestions": [
+          {
+            "question": "First high-quality MCQ question testing understanding of the material...",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correctOptionIndex": 0,
+            "hint": "A detailed explanation of why the correct option is correct."
+          },
+          {
+            "question": "Second high-quality MCQ question testing understanding of the material...",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correctOptionIndex": 0,
+            "hint": "A detailed explanation of why the correct option is correct."
+          },
+          {
+            "question": "Third high-quality MCQ question testing understanding of the material...",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correctOptionIndex": 0,
+            "hint": "A detailed explanation of why the correct option is correct."
+          }
+        ],
         "chartData": {
           "type": "bar",
           "title": "E.g., Comparison metric",

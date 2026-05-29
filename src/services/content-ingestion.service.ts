@@ -25,7 +25,7 @@ export class ContentIngestionService {
     });
 
     this.llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       apiKey: process.env.GEMINI_API_KEY,
       temperature: 0.1, // Low temp for OCR
     });
@@ -49,7 +49,7 @@ export class ContentIngestionService {
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
           ]
         });
-        const modelList = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-pro-latest"];
+        const modelList = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
         let lastError;
         let res;
 

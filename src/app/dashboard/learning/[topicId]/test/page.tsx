@@ -34,6 +34,16 @@ export default function TopicTestPage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const tData = docSnap.data();
+
+          // Gate check: all modules must be completed
+          const completedCount = (tData.completedModules || []).length;
+          const totalCount = (tData.modules || []).length;
+          if (completedCount < totalCount && totalCount > 0) {
+            alert("Please complete all modules of the learning topic before attempting the Grand Test!");
+            router.push(`/dashboard/learning/${topicId}`);
+            return;
+          }
+
           setTopicData(tData);
 
           const res = await fetch("/api/generate-test", {
@@ -51,7 +61,7 @@ export default function TopicTestPage() {
       }
     }
     initTest();
-  }, [user, topicId]);
+  }, [user, topicId, router]);
 
   const handleFinish = async () => {
     if (!user) return;
@@ -123,7 +133,7 @@ export default function TopicTestPage() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4 max-w-sm mx-auto text-center">
         <AriseMascot size={110} state="thinking" />
-        <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">Assembling final test...</h3>
+        <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">Assembling Grand Test...</h3>
         <p className="text-xs text-slate-500 leading-relaxed font-semibold">Retrieving curriculum context metrics and generating challenge questions.</p>
       </div>
     );
@@ -143,7 +153,7 @@ export default function TopicTestPage() {
         </motion.div>
 
         <div className="space-y-2">
-          <h1 className="text-3xl font-black text-slate-850 tracking-tight">Assessment Complete!</h1>
+          <h1 className="text-3xl font-black text-slate-850 tracking-tight">Grand Test Complete! 🏆</h1>
           <p className="text-sm text-slate-550 font-semibold">Personalized evaluation roadmap for <strong className="text-slate-800 capitalize">{topicData?.title}</strong></p>
         </div>
 
@@ -155,11 +165,11 @@ export default function TopicTestPage() {
         {score >= 60 ? (
           <div className="max-w-md mx-auto p-4 bg-green-50 border border-green-200 text-green-600 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-inner">
             <Award className="w-5 h-5" />
-            Excellent understanding! Ingested +500 XP bonus.
+            Excellent understanding! Ingested +500 XP Grand Test bonus.
           </div>
         ) : (
           <div className="max-w-md mx-auto p-4 bg-amber-50 border border-amber-200 text-amber-600 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-inner">
-            Good try! Feel free to review the roadmaps and test again.
+            Good try! Feel free to review the modules and try the Grand Test again.
           </div>
         )}
 
@@ -185,7 +195,7 @@ export default function TopicTestPage() {
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-200 pb-4 gap-4">
         <div>
-          <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">Topic Final Test</span>
+          <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">Topic Grand Test</span>
           <h1 className="text-2xl font-black text-slate-800 capitalize tracking-tight mt-0.5">{topicData?.title}</h1>
         </div>
         <div className="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full shrink-0 shadow-inner">
@@ -288,7 +298,7 @@ export default function TopicTestPage() {
             disabled={submitting}
             className="bg-gradient-to-r from-cyan-500 to-indigo-500 font-bold px-8 h-11 text-xs text-white rounded-xl shadow-md active:scale-95 transition-all arbuttonchunky"
           >
-            {submitting ? "Finishing..." : "Submit Test"}
+            {submitting ? "Finishing..." : "Submit Grand Test"}
           </Button>
         ) : (
           <Button 
