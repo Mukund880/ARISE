@@ -124,8 +124,8 @@ export default function MyLearningPage() {
       {/* Empty state */}
       {topics.length === 0 ? (
         <Card className="p-12 text-center flex flex-col items-center justify-center space-y-5 border-border bg-card rounded-lg shadow-sm">
-          <div className="w-20 h-20 bg-primary/5 rounded-full border border-primary/20 flex items-center justify-center shadow-inner">
-            <AriseMascot size={70} state="sleep" interactive={false} />
+          <div className="w-28 h-28 bg-primary/5 rounded-full border border-primary/20 flex items-center justify-center shadow-inner overflow-visible p-2">
+            <AriseMascot size={90} state="sleep" interactive={false} />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-foreground">Your Curriculum is Empty</h3>

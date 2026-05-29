@@ -8,9 +8,12 @@ import { useAuth } from "@/context/AuthContext";
 import { ArrowLeft, Users, UserMinus } from "lucide-react";
 import Link from "next/link";
 
+import { useArisPopup } from "@/context/ArisPopupContext";
+
 export default function ManageStudentsPage() {
   const { squadId } = useParams();
   const { user } = useAuth();
+  const { showConfirm } = useArisPopup();
   const [squad, setSquad] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,21 +35,27 @@ export default function ManageStudentsPage() {
     if (user) fetchSquad();
   }, [user, squadId]);
 
-  async function handleRemove(studentId: string) {
-    if (!confirm("Remove student from this squad?")) return;
-    try {
-      const res = await fetch(`/api/social/squads/${squadId}/members?userId=${studentId}`, {
-        method: "DELETE"
-      });
-      if (!res.ok) throw new Error("Failed to remove student");
-      setSquad((prev: any) => ({
-        ...prev,
-        members: prev.members.filter((m: any) => m.id !== studentId)
-      }));
-    } catch (err) {
-      console.error(err);
-      alert("Error removing student.");
-    }
+  function handleRemove(studentId: string) {
+    showConfirm(
+      "Remove Student",
+      "Are you sure you want to remove this student from the squad?",
+      async () => {
+        try {
+          const res = await fetch(`/api/social/squads/${squadId}/members?userId=${studentId}`, {
+            method: "DELETE"
+          });
+          if (!res.ok) throw new Error("Failed to remove student");
+          setSquad((prev: any) => ({
+            ...prev,
+            members: prev.members.filter((m: any) => m.id !== studentId)
+          }));
+        } catch (err) {
+          console.error(err);
+          alert("Error removing student.");
+        }
+      },
+      "Remove"
+    );
   }
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>;

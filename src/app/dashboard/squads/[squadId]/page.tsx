@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { NotificationService } from "@/services/notification.service";
+import { useArisPopup } from "@/context/ArisPopupContext";
 
 interface StudentAnalytics {
   userId: string;
@@ -56,6 +57,7 @@ export default function StudentSquadPortal() {
   const { squadId } = useParams() as { squadId: string };
   const { user, userProfile } = useAuth();
   const router = useRouter();
+  const { showConfirm } = useArisPopup();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
@@ -1030,7 +1032,12 @@ export default function StudentSquadPortal() {
               {!testSubmitted && (
                 <button 
                   onClick={() => {
-                    if (confirm("Quit test? Progress will not be saved.")) closeTestTaker();
+                    showConfirm(
+                      "Quit Test",
+                      "Quit test? Progress will not be saved.",
+                      () => closeTestTaker(),
+                      "Quit"
+                    );
                   }} 
                   className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
                 >

@@ -73,8 +73,8 @@ export default function ExplorePage() {
         {/* Mascot tip */}
         <div className="flex items-center gap-3.5 bg-card border border-border px-4 py-2.5 rounded-lg max-w-sm shadow-sm relative overflow-hidden">
           <div className="absolute -left-6 -top-6 w-16 h-16 bg-primary/5 rounded-full blur-xl pointer-events-none" />
-          <div className="w-10 h-10 shrink-0 flex items-center justify-center -ml-1">
-            <AriseMascot size={45} state="wave" interactive={false} />
+          <div className="w-14 h-14 shrink-0 flex items-center justify-center -ml-1 overflow-visible">
+            <AriseMascot size={55} state="wave" interactive={false} />
           </div>
           <div className="text-[11px] text-muted-foreground leading-normal">
             <strong className="text-foreground block font-bold mb-0.5">ARIS's Recommendation</strong>

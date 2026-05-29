@@ -21,6 +21,7 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { motion, AnimatePresence } from "framer-motion";
 import { NotificationService } from "@/services/notification.service";
+import { useArisPopup } from "@/context/ArisPopupContext";
 
 interface StudentAnalytics {
   userId: string;
@@ -59,6 +60,7 @@ export default function TeacherSquadConsole() {
   const { squadId } = useParams() as { squadId: string };
   const { user, userProfile } = useAuth();
   const router = useRouter();
+  const { showConfirm } = useArisPopup();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
@@ -183,26 +185,32 @@ export default function TeacherSquadConsole() {
   }, [squadId]);
 
   // 3. Remove Student
-  const handleRemoveStudent = async (studentId: string) => {
-    if (!confirm("Are you sure you want to remove this student from the squad?")) return;
-    try {
-      const userRef = doc(db, "users", studentId);
-      
-      // Update student profile: remove squadId references
-      await updateDoc(userRef, {
-        squadId: null,
-        squadIds: arrayRemove(squadId)
-      });
-      
-      // Send notification
-      await NotificationService.sendNotification(studentId, "Squad Removed", `You have been removed from classroom squad "${squad.name}".`);
+  const handleRemoveStudent = (studentId: string) => {
+    showConfirm(
+      "Remove Student",
+      "Are you sure you want to remove this student from the squad?",
+      async () => {
+        try {
+          const userRef = doc(db, "users", studentId);
+          
+          // Update student profile: remove squadId references
+          await updateDoc(userRef, {
+            squadId: null,
+            squadIds: arrayRemove(squadId)
+          });
+          
+          // Send notification
+          await NotificationService.sendNotification(studentId, "Squad Removed", `You have been removed from classroom squad "${squad.name}".`);
 
-      alert("Student removed successfully.");
-      if (selectedStudent?.id === studentId) setSelectedStudent(null);
-    } catch (err) {
-      console.error(err);
-      alert("Error removing student.");
-    }
+          alert("Student removed successfully.");
+          if (selectedStudent?.id === studentId) setSelectedStudent(null);
+        } catch (err) {
+          console.error(err);
+          alert("Error removing student.");
+        }
+      },
+      "Remove"
+    );
   };
 
   // 4. File Upload (Class Notes)
@@ -263,24 +271,30 @@ export default function TeacherSquadConsole() {
   };
 
   // 5. Delete Note
-  const handleDeleteNote = async (noteId: string, fileUrl: string) => {
-    if (!confirm("Delete this study note?")) return;
-    try {
-      await deleteDoc(doc(db, "squads", squadId, "notes", noteId));
-      
-      // Try deleting from Firebase Storage
-      try {
-        const storageRef = ref(storage, fileUrl);
-        await deleteObject(storageRef);
-      } catch (storageErr) {
-        console.warn("Storage deletion warning (might not exist):", storageErr);
-      }
+  const handleDeleteNote = (noteId: string, fileUrl: string) => {
+    showConfirm(
+      "Delete Note",
+      "Delete this study note?",
+      async () => {
+        try {
+          await deleteDoc(doc(db, "squads", squadId, "notes", noteId));
+          
+          // Try deleting from Firebase Storage
+          try {
+            const storageRef = ref(storage, fileUrl);
+            await deleteObject(storageRef);
+          } catch (storageErr) {
+            console.warn("Storage deletion warning (might not exist):", storageErr);
+          }
 
-      alert("Note deleted.");
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting note.");
-    }
+          alert("Note deleted.");
+        } catch (err) {
+          console.error(err);
+          alert("Error deleting note.");
+        }
+      },
+      "Delete"
+    );
   };
 
   // 6. Create Assignment
@@ -319,15 +333,21 @@ export default function TeacherSquadConsole() {
   };
 
   // 7. Delete Assignment
-  const handleDeleteAssignment = async (assignId: string) => {
-    if (!confirm("Are you sure you want to delete this assignment?")) return;
-    try {
-      await deleteDoc(doc(db, "squads", squadId, "assignments", assignId));
-      alert("Assignment deleted.");
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting assignment.");
-    }
+  const handleDeleteAssignment = (assignId: string) => {
+    showConfirm(
+      "Delete Assignment",
+      "Are you sure you want to delete this assignment?",
+      async () => {
+        try {
+          await deleteDoc(doc(db, "squads", squadId, "assignments", assignId));
+          alert("Assignment deleted.");
+        } catch (err) {
+          console.error(err);
+          alert("Error deleting assignment.");
+        }
+      },
+      "Delete"
+    );
   };
 
   // 8. Test Builder Helpers
@@ -405,15 +425,21 @@ export default function TeacherSquadConsole() {
   };
 
   // 10. Delete Test
-  const handleDeleteTest = async (testId: string) => {
-    if (!confirm("Are you sure you want to delete this test?")) return;
-    try {
-      await deleteDoc(doc(db, "squads", squadId, "tests", testId));
-      alert("Test deleted.");
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting test.");
-    }
+  const handleDeleteTest = (testId: string) => {
+    showConfirm(
+      "Delete Test",
+      "Are you sure you want to delete this test?",
+      async () => {
+        try {
+          await deleteDoc(doc(db, "squads", squadId, "tests", testId));
+          alert("Test deleted.");
+        } catch (err) {
+          console.error(err);
+          alert("Error deleting test.");
+        }
+      },
+      "Delete"
+    );
   };
 
   // 10.5 Load Tab Query & Real-time student chat
@@ -460,101 +486,107 @@ export default function TeacherSquadConsole() {
     }
   };
 
-  const handleReviewSubmission = async (studentId: string, assignmentId: string, action: "accept" | "reject") => {
+  const handleReviewSubmission = (studentId: string, assignmentId: string, action: "accept" | "reject") => {
     const confirmMsg = action === "accept" 
       ? "Accept this student's submission and reward the XP?" 
       : "Reject this student's submission?";
-    if (!confirm(confirmMsg)) return;
-
-    let feedback = "";
-    if (action === "reject") {
-      feedback = prompt("Provide feedback to the student explaining the rejection (optional):") || "";
-    }
-
-    try {
-      const analyticsRef = doc(db, "squads", squadId, "analytics", studentId);
-      const analyticsSnap = await getDoc(analyticsRef);
-      if (!analyticsSnap.exists()) return;
-
-      const studentStats = analyticsSnap.data() as StudentAnalytics;
-      const currentSubmissions = studentStats.submissions || [];
-      
-      const updatedSubmissions = currentSubmissions.map((sub: any) => {
-        if (sub.assignmentId === assignmentId) {
-          return { ...sub, status: action === "accept" ? "accepted" : "rejected", feedback: feedback || null };
+    
+    showConfirm(
+      action === "accept" ? "Accept Submission" : "Reject Submission",
+      confirmMsg,
+      async () => {
+        let feedback = "";
+        if (action === "reject") {
+          feedback = prompt("Provide feedback to the student explaining the rejection (optional):") || "";
         }
-        return sub;
-      });
 
-      const assignment = assignments.find(a => a.id === assignmentId);
-      const xpReward = assignment?.xpReward || 100;
+        try {
+          const analyticsRef = doc(db, "squads", squadId, "analytics", studentId);
+          const analyticsSnap = await getDoc(analyticsRef);
+          if (!analyticsSnap.exists()) return;
 
-      if (action === "accept") {
-        await updateDoc(analyticsRef, {
-          submissions: updatedSubmissions,
-          completedAssignments: arrayUnion(assignmentId),
-          assignmentsCompleted: increment(1),
-          xpEarned: increment(xpReward)
-        });
-
-        const studentUserRef = doc(db, "users", studentId);
-        const studentSnap = await getDoc(studentUserRef);
-        if (studentSnap.exists()) {
-          const studentProfile = studentSnap.data();
-          const currentXp = Number(studentProfile.xp) || 0;
-          const newXp = currentXp + xpReward;
-          const newLevel = Math.floor(newXp / 1000) + 1;
-          let newRank = "Rookie";
-          if (newLevel >= 15) newRank = "Grandmaster";
-          else if (newLevel >= 10) newRank = "Master";
-          else if (newLevel >= 5) newRank = "Scholar";
-
-          await updateDoc(studentUserRef, {
-            xp: newXp,
-            level: newLevel,
-            rank: newRank
+          const studentStats = analyticsSnap.data() as StudentAnalytics;
+          const currentSubmissions = studentStats.submissions || [];
+          
+          const updatedSubmissions = currentSubmissions.map((sub: any) => {
+            if (sub.assignmentId === assignmentId) {
+              return { ...sub, status: action === "accept" ? "accepted" : "rejected", feedback: feedback || null };
+            }
+            return sub;
           });
 
-          try {
-            await fetch("/api/gamification/sync", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                uid: studentId,
-                email: studentProfile.email,
-                displayName: studentProfile.displayName || 'Scholar',
+          const assignment = assignments.find(a => a.id === assignmentId);
+          const xpReward = assignment?.xpReward || 100;
+
+          if (action === "accept") {
+            await updateDoc(analyticsRef, {
+              submissions: updatedSubmissions,
+              completedAssignments: arrayUnion(assignmentId),
+              assignmentsCompleted: increment(1),
+              xpEarned: increment(xpReward)
+            });
+
+            const studentUserRef = doc(db, "users", studentId);
+            const studentSnap = await getDoc(studentUserRef);
+            if (studentSnap.exists()) {
+              const studentProfile = studentSnap.data();
+              const currentXp = Number(studentProfile.xp) || 0;
+              const newXp = currentXp + xpReward;
+              const newLevel = Math.floor(newXp / 1000) + 1;
+              let newRank = "Rookie";
+              if (newLevel >= 15) newRank = "Grandmaster";
+              else if (newLevel >= 10) newRank = "Master";
+              else if (newLevel >= 5) newRank = "Scholar";
+
+              await updateDoc(studentUserRef, {
                 xp: newXp,
                 level: newLevel,
                 rank: newRank
-              })
+              });
+
+              try {
+                await fetch("/api/gamification/sync", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    uid: studentId,
+                    email: studentProfile.email,
+                    displayName: studentProfile.displayName || 'Scholar',
+                    xp: newXp,
+                    level: newLevel,
+                    rank: newRank
+                  })
+                });
+              } catch {}
+            }
+
+            await NotificationService.sendNotification(
+              studentId,
+              "Work Approved! 🎉",
+              `Your work for "${assignment?.title || 'Assignment'}" has been approved! +${xpReward} XP awarded.`,
+              `/dashboard/squads/${squadId}?tab=assignments`
+            );
+            alert("Submission approved and student rewarded!");
+          } else {
+            await updateDoc(analyticsRef, {
+              submissions: updatedSubmissions
             });
-          } catch {}
+
+            await NotificationService.sendNotification(
+              studentId,
+              "Work Rejected ❌",
+              `Your work for "${assignment?.title || 'Assignment'}" was rejected.${feedback ? ' Feedback: ' + feedback : ' Please review and resubmit.'}`,
+              `/dashboard/squads/${squadId}?tab=assignments`
+            );
+            alert("Submission rejected. Student has been notified.");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error reviewing work.");
         }
-
-        await NotificationService.sendNotification(
-          studentId,
-          "Work Approved! 🎉",
-          `Your work for "${assignment?.title || 'Assignment'}" has been approved! +${xpReward} XP awarded.`,
-          `/dashboard/squads/${squadId}?tab=assignments`
-        );
-        alert("Submission approved and student rewarded!");
-      } else {
-        await updateDoc(analyticsRef, {
-          submissions: updatedSubmissions
-        });
-
-        await NotificationService.sendNotification(
-          studentId,
-          "Work Rejected ❌",
-          `Your work for "${assignment?.title || 'Assignment'}" was rejected.${feedback ? ' Feedback: ' + feedback : ' Please review and resubmit.'}`,
-          `/dashboard/squads/${squadId}?tab=assignments`
-        );
-        alert("Submission rejected. Student has been notified.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error reviewing work.");
-    }
+      },
+      action === "accept" ? "Accept" : "Reject"
+    );
   };
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse text-xs font-mono uppercase tracking-widest">Assembling squad console...</div>;

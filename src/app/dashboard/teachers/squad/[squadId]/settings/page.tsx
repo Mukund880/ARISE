@@ -8,10 +8,13 @@ import { useAuth } from "@/context/AuthContext";
 import { ArrowLeft, Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import { useArisPopup } from "@/context/ArisPopupContext";
+
 export default function SquadSettingsPage() {
   const { squadId } = useParams();
   const { user } = useAuth();
   const router = useRouter();
+  const { showConfirm } = useArisPopup();
   const [squad, setSquad] = useState<any>(null);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -58,16 +61,22 @@ export default function SquadSettingsPage() {
     }
   }
 
-  async function handleDelete() {
-    if (!confirm("Are you SURE you want to delete this squad? All members will be removed.")) return;
-    try {
-      const res = await fetch(`/api/social/squads/${squadId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      router.push("/dashboard/teachers");
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting squad.");
-    }
+  function handleDelete() {
+    showConfirm(
+      "Delete Squad",
+      "Are you SURE you want to delete this squad? All members will be removed.",
+      async () => {
+        try {
+          const res = await fetch(`/api/social/squads/${squadId}`, { method: "DELETE" });
+          if (!res.ok) throw new Error("Failed to delete");
+          router.push("/dashboard/teachers");
+        } catch (err) {
+          console.error(err);
+          alert("Error deleting squad.");
+        }
+      },
+      "Delete"
+    );
   }
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>;
