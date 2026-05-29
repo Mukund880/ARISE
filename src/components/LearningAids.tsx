@@ -3,22 +3,40 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Brain, FileText, Table, Network, Download } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 interface LearningAidsProps {
   topicTitle: string;
   moduleTitle: string;
+  topicId: string;
+  moduleId: string;
 }
 
-export function LearningAids({ topicTitle, moduleTitle }: LearningAidsProps) {
+export function LearningAids({ topicTitle, moduleTitle, topicId, moduleId }: LearningAidsProps) {
+  const { user } = useAuth();
   const [aidContent, setAidContent] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeAid, setActiveAid] = useState<string | null>(null);
 
   const generateAid = async (aidType: string) => {
+    if (!user) return;
     setIsGenerating(true);
     setActiveAid(aidType);
     setAidContent(null);
     try {
+      // Create a URL safe ID for the aid document
+      const aidDocId = aidType.replace(/\s+/g, "_").toLowerCase();
+      const aidRef = doc(db, "users", user.uid, "topics", topicId, "modules", moduleId, "aids", aidDocId);
+      const aidSnap = await getDoc(aidRef);
+
+      if (aidSnap.exists()) {
+        setAidContent(aidSnap.data().content);
+        setIsGenerating(false);
+        return;
+      }
+
       const res = await fetch("/api/learning-aids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -26,6 +44,8 @@ export function LearningAids({ topicTitle, moduleTitle }: LearningAidsProps) {
       });
       if (!res.ok) throw new Error("Failed to generate aid");
       const data = await res.json();
+      
+      await setDoc(aidRef, { content: data.content });
       setAidContent(data.content);
     } catch (err) {
       console.error(err);

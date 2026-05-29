@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, arrayUnion } from 'firebase/firestore';
 
 export class SocialService {
   static async getSquads(ownerId?: string) {
@@ -18,7 +18,7 @@ export class SocialService {
     const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
     const mappedSquads = squads.map(s => {
-      const members = allUsers.filter(u => u.squadId === s.id);
+      const members = allUsers.filter(u => u.squadId === s.id || (u.squadIds && u.squadIds.includes(s.id)));
       const realXp = members.reduce((acc, m) => acc + (m.xp || 0), 0);
       return {
         ...s,
@@ -48,9 +48,12 @@ export class SocialService {
     const squad = snap.docs[0];
     
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, { squadId: squad.id });
+    await updateDoc(userRef, { 
+      squadId: squad.id, // Keep for legacy
+      squadIds: arrayUnion(squad.id) 
+    });
     
-    return { id: userId, squadId: squad.id };
+    return { id: userId, squadId: squad.id, squadIds: [squad.id] };
   }
 
   static async createSquad(ownerId: string, name: string, desc: string) {

@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { SmartTextWrapper } from "@/components/SmartTextWrapper";
 import { LearningAids } from "@/components/LearningAids";
 import { PracticeModule } from "@/components/PracticeModule";
@@ -113,20 +113,30 @@ export default function AdaptiveLearningPage() {
     setClaimed(completedModules.includes(module.id));
     
     try {
-      const res = await fetch("/api/generate-module-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topicTitle: topicData.title,
-          moduleTitle: module.title,
-          level: topicData.level || "Beginner",
-          goal: topicData.goal || "Master the concepts"
-        })
-      });
+      if (!user) throw new Error("Not authenticated");
+      const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", module.id);
+      const moduleContentSnap = await getDoc(moduleContentRef);
       
-      if (!res.ok) throw new Error("Failed to generate content");
-      const data = await res.json();
-      setLessonContent(data);
+      if (moduleContentSnap.exists()) {
+        setLessonContent(moduleContentSnap.data());
+      } else {
+        const res = await fetch("/api/generate-module-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topicTitle: topicData.title,
+            moduleTitle: module.title,
+            level: topicData.level || "Beginner",
+            goal: topicData.goal || "Master the concepts"
+          })
+        });
+        
+        if (!res.ok) throw new Error("Failed to generate content");
+        const data = await res.json();
+        
+        await setDoc(moduleContentRef, data);
+        setLessonContent(data);
+      }
     } catch (err) {
       console.error(err);
       setLessonContent({
@@ -286,7 +296,7 @@ export default function AdaptiveLearningPage() {
                       </div>
                     </SmartTextWrapper>
                     
-                    <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} />
+                    <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} topicId={topicId} moduleId={activeModule?.id || ""} />
                   </div>
 
                   {/* Right side: Quiz Panel */}

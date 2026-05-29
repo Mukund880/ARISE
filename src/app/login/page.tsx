@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Brain } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { AriseMascot } from "@/components/AriseMascot";
 
@@ -17,29 +17,73 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const getFriendlyErrorMessage = (code: string, defaultMsg: string) => {
+    switch (code) {
+      case "auth/invalid-email":
+        return "The email address is not valid.";
+      case "auth/user-disabled":
+        return "This account has been disabled.";
+      case "auth/user-not-found":
+        return "No account found with this email.";
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+        return "Incorrect email or password.";
+      case "auth/too-many-requests":
+        return "Too many failed login attempts. Please try again later.";
+      default:
+        return "An error occurred during login. Please try again.";
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setResetMsg("");
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message);
+      setError(getFriendlyErrorMessage(err.code, err.message));
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     setError("");
+    setResetMsg("");
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message);
+      if (err.code !== "auth/popup-closed-by-user") {
+        setError("Failed to sign in with Google. Please try again.");
+      }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError("");
+    setResetMsg("");
+    if (!email) {
+      setError("Please enter your email address first to reset your password.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMsg("A password reset link has been sent to your email!");
+    } catch (err: any) {
+      if (err.code === "auth/user-not-found") {
+        setError("No account found with this email.");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
+      } else {
+        setError("Failed to send reset email. Please try again later.");
+      }
     }
   };
 
@@ -76,6 +120,12 @@ export default function LoginPage() {
           </div>
         )}
 
+        {resetMsg && (
+          <div className="mb-5 p-3.5 rounded-md bg-green-500/10 border border-green-500/20 text-green-500 text-xs text-center font-medium">
+            {resetMsg}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-muted-foreground text-[9px] font-mono uppercase tracking-widest">Email Address</Label>
@@ -93,9 +143,13 @@ export default function LoginPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-muted-foreground text-[9px] font-mono uppercase tracking-widest">Password</Label>
-              <Link href="#" className="text-xs text-primary hover:underline transition-colors font-medium">
+              <button 
+                type="button" 
+                onClick={handleForgotPassword}
+                className="text-xs text-primary hover:underline transition-colors font-medium bg-transparent border-none cursor-pointer"
+              >
                 Forgot password?
-              </Link>
+              </button>
             </div>
             <Input 
               id="password" 

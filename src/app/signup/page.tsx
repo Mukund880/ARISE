@@ -20,6 +20,21 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const getFriendlyErrorMessage = (code: string, defaultMsg: string) => {
+    switch (code) {
+      case "auth/email-already-in-use":
+        return "This email is already in use by another account.";
+      case "auth/invalid-email":
+        return "The email address is not valid.";
+      case "auth/operation-not-allowed":
+        return "Email/password accounts are not enabled. Please contact support.";
+      case "auth/weak-password":
+        return "Your password is too weak. Please use at least 6 characters.";
+      default:
+        return "An error occurred during sign up. Please try again.";
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -29,7 +44,7 @@ export default function SignupPage() {
       await updateProfile(userCredential.user, { displayName: name });
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message);
+      setError(getFriendlyErrorMessage(err.code, err.message));
       setLoading(false);
     }
   };
@@ -41,7 +56,9 @@ export default function SignupPage() {
       await signInWithPopup(auth, provider);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message);
+      if (err.code !== "auth/popup-closed-by-user") {
+        setError("Failed to sign in with Google. Please try again.");
+      }
     }
   };
 

@@ -12,14 +12,18 @@ import { AriseMascot } from "@/components/AriseMascot";
 export default function SquadsPage() {
   const { user, userProfile } = useAuth();
   const [squads, setSquads] = useState<any[]>([]);
-  const [joinedSquadId, setJoinedSquadId] = useState<string | null>(null);
+  const [joinedSquadIds, setJoinedSquadIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [selectedJoinSquadId, setSelectedJoinSquadId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (userProfile?.squadId) setJoinedSquadId(userProfile.squadId);
+    if (userProfile?.squadIds) {
+      setJoinedSquadIds(userProfile.squadIds);
+    } else if (userProfile?.squadId) {
+      setJoinedSquadIds([userProfile.squadId]);
+    }
   }, [userProfile]);
 
   useEffect(() => {
@@ -31,7 +35,7 @@ export default function SquadsPage() {
         if (!res.ok) throw new Error("Failed to fetch squads");
         const allSquads = await res.json();
         // Only show squads the user has joined
-        const joinedSquads = allSquads.filter((s: any) => s.id === joinedSquadId);
+        const joinedSquads = allSquads.filter((s: any) => joinedSquadIds.includes(s.id));
         setSquads(joinedSquads);
       } catch (err) {
         console.error("Error fetching squads:", err);
@@ -39,8 +43,12 @@ export default function SquadsPage() {
         setLoading(false);
       }
     }
-    if (user) fetchSquads();
-  }, [user, joinedSquadId]);
+    if (user && joinedSquadIds.length > 0) {
+      fetchSquads();
+    } else if (user) {
+      setLoading(false);
+    }
+  }, [user, joinedSquadIds]);
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +64,7 @@ export default function SquadsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to join squad");
       
       alert("Successfully joined classroom squad!");
-      setJoinedSquadId(data.squadId);
+      setJoinedSquadIds((prev) => Array.from(new Set([...prev, data.squadId])));
       setInviteCode("");
     } catch (err: any) {
       console.error(err);
@@ -81,20 +89,18 @@ export default function SquadsPage() {
 
         {/* Join Code Input and Mascot Tip */}
         <div className="flex flex-col items-end gap-4">
-          {!joinedSquadId && (
             <form onSubmit={handleJoin} className="flex gap-2">
               <input 
                 required
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="INVITE CODE"
-                className="w-40 bg-secondary/20 border border-border rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
+                placeholder="JOIN CODE"
+                className="w-32 bg-secondary/20 border border-border rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors uppercase"
               />
               <Button disabled={joining} type="submit" className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/95 font-mono text-xs uppercase tracking-widest shrink-0">
                 {joining ? "..." : "Join"}
               </Button>
             </form>
-          )}
           
           <div className="flex items-center gap-3.5 bg-card border border-border px-4 py-2.5 rounded-lg max-w-sm shadow-sm relative overflow-hidden">
             <div className="absolute -left-6 -top-6 w-16 h-16 bg-primary/5 rounded-full blur-xl pointer-events-none" />
