@@ -22,6 +22,38 @@ console.log("GEMINI_API_KEY exists:", !!process.env.GEMINI_API_KEY);
 console.log("GOOGLE_API_KEY exists:", !!process.env.GOOGLE_API_KEY);
 console.log("=============================");
 
+export function extractJson(text: string): string {
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  let startIdx = -1;
+  
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else {
+    startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
+  }
+  
+  if (startIdx === -1) {
+    throw new Error("No JSON object or array found in model response");
+  }
+  
+  const lastBrace = text.lastIndexOf('}');
+  const lastBracket = text.lastIndexOf(']');
+  let endIdx = -1;
+  
+  if (lastBrace !== -1 && lastBracket !== -1) {
+    endIdx = Math.max(lastBrace, lastBracket);
+  } else {
+    endIdx = lastBrace !== -1 ? lastBrace : lastBracket;
+  }
+  
+  if (endIdx === -1 || endIdx < startIdx) {
+    throw new Error("Malformed JSON bounds in model response");
+  }
+  
+  return text.substring(startIdx, endIdx + 1);
+}
+
 export class AIService {
   public llm: ChatGoogleGenerativeAI;
   private embeddings: GoogleGenerativeAIEmbeddings;
@@ -119,14 +151,9 @@ export class AIService {
           temperature: 0.7,
         });
         const response = await chatModel.invoke(prompt);
-        let text = response.content.toString().trim();
-        
-        // Clean up potential markdown formatting from Gemini
-        if (text.startsWith("```json")) text = text.slice(7);
-        if (text.startsWith("```")) text = text.slice(3);
-        if (text.endsWith("```")) text = text.slice(0, -3);
-        
-        const parsedRoadmap = JSON.parse(text.trim());
+        const text = response.content.toString();
+        const jsonStr = extractJson(text);
+        const parsedRoadmap = JSON.parse(jsonStr);
 
         if (canCache && cacheRef) {
           try {
@@ -194,13 +221,9 @@ export class AIService {
           temperature: 0.7,
         });
         const response = await chatModel.invoke(prompt);
-        let text = response.content.toString().trim();
-        
-        if (text.startsWith("```json")) text = text.slice(7);
-        if (text.startsWith("```")) text = text.slice(3);
-        if (text.endsWith("```")) text = text.slice(0, -3);
-        
-        return JSON.parse(text.trim());
+        const text = response.content.toString();
+        const jsonStr = extractJson(text);
+        return JSON.parse(jsonStr);
       } catch (error: any) {
         console.warn(`Module content generation failed with model ${modelName}:`, error.message || error);
         lastError = error;

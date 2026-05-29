@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { aiService } from '@/lib/ai-service';
+import { aiService, extractJson } from '@/lib/ai-service';
 
 export async function POST(req: Request) {
   try {
@@ -36,13 +36,9 @@ export async function POST(req: Request) {
     `;
 
     const res = await aiService.llm.invoke(prompt);
-    
-    let content = res.content.toString().trim();
-    if (content.startsWith("\`\`\`json")) content = content.slice(7);
-    if (content.startsWith("\`\`\`")) content = content.slice(3);
-    if (content.endsWith("\`\`\`")) content = content.slice(0, -3);
-
-    const questions = JSON.parse(content.trim());
+    const content = res.content.toString();
+    const jsonStr = extractJson(content);
+    const questions = JSON.parse(jsonStr);
     return NextResponse.json({ questions });
   } catch (error) {
     console.error('API Route Error (generate-test):', error);
