@@ -35,31 +35,25 @@ export default function TeachersPage() {
 
         // Calculate real-time stats
         let totalStudents = 0;
-        let totalAccuracy = 0;
-        let accuracyCount = 0;
-        let totalWeeklyTime = 0;
+        let totalAccuracySum = 0;
+        let totalStudyTime = 0;
+        let studentsWithStatsCount = 0;
 
         allSquads.forEach((squad: any) => {
           const memberCount = squad._count?.members || 0;
           totalStudents += memberCount;
           
-          // Calculate average accuracy from members
           if (squad.members && squad.members.length > 0) {
-            let memberAccuracySum = 0;
-            squad.members.forEach((m: any) => memberAccuracySum += (m.quizAccuracy || 80));
-            const squadAccuracy = memberAccuracySum / squad.members.length;
-            totalAccuracy += squadAccuracy;
-            accuracyCount++;
-          }
-          
-          // Calculate weekly study time (placeholder)
-          if (memberCount > 0) {
-            totalWeeklyTime += Math.random() * 100 + 300;
+            squad.members.forEach((m: any) => {
+              totalAccuracySum += (m.quizAccuracy || 0);
+              totalStudyTime += (m.studyTime || 0);
+              studentsWithStatsCount++;
+            });
           }
         });
 
-        const avgAccuracy = accuracyCount > 0 ? totalAccuracy / accuracyCount : 0;
-        const avgWeeklyTime = totalStudents > 0 ? totalWeeklyTime / totalStudents : 0;
+        const avgAccuracy = studentsWithStatsCount > 0 ? totalAccuracySum / studentsWithStatsCount : 0;
+        const avgWeeklyTime = studentsWithStatsCount > 0 ? totalStudyTime / studentsWithStatsCount : 0;
 
         setSquadStats({
           totalStudents,
@@ -161,7 +155,10 @@ export default function TeachersPage() {
             squads.map((squad) => {
               const memberCount = squad._count?.members || squad.members?.length || 0;
               const accuracyPercent = squad.members?.length > 0 
-                ? Math.round(squad.members.reduce((acc: number, m: any) => acc + (m.quizAccuracy || 80), 0) / squad.members.length)
+                ? Math.round(squad.members.reduce((acc: number, m: any) => acc + (m.quizAccuracy || 0), 0) / squad.members.length)
+                : 0;
+              const avgStudyTime = squad.members?.length > 0
+                ? Math.round(squad.members.reduce((acc: number, m: any) => acc + (m.studyTime || 0), 0) / squad.members.length)
                 : 0;
               
               return (
@@ -184,7 +181,7 @@ export default function TeachersPage() {
                     <div className="grid grid-cols-3 gap-2 sm:gap-4 py-3 sm:py-4 border-y border-border/40 text-center">
                       <div>
                         <p className="text-[9px] sm:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">TIME</p>
-                        <p className="text-xs font-bold text-foreground mt-0.5">{Math.round(Math.random() * 100 + 300)}</p>
+                        <p className="text-xs font-bold text-foreground mt-0.5">{avgStudyTime}m</p>
                       </div>
                       <div>
                         <p className="text-[9px] sm:text-[10px] text-muted-foreground font-mono uppercase tracking-wider">ACC</p>
@@ -198,7 +195,7 @@ export default function TeachersPage() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-6">
-                    <Link href={`/dashboard/teachers/squad/${squad.id}/students`} className="flex-1">
+                    <Link href={`/dashboard/teachers/squad/${squad.id}`} className="flex-1">
                       <Button variant="outline" className="w-full border-border text-foreground hover:bg-secondary/15 h-9 sm:h-10 text-xs font-mono uppercase tracking-widest cursor-pointer">
                         Manage
                       </Button>

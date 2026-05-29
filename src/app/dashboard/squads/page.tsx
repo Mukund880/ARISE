@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Users2, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import { AriseMascot } from "@/components/AriseMascot";
+import Link from "next/link";
 
 export default function SquadsPage() {
   const { user, userProfile } = useAuth();
@@ -162,12 +163,13 @@ export default function SquadsPage() {
                     </div>
 
                     {joinedSquadIds.includes(squad.id) && (
-                      <Button
-                        disabled={true}
-                        className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all cursor-default bg-primary/10 border border-primary/30 text-primary`}
-                      >
-                        ✓ Your Squad
-                      </Button>
+                      <Link href={`/dashboard/squads/${squad.id}`} className="w-full">
+                        <Button
+                          className="w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all bg-primary text-primary-foreground hover:bg-primary/95 cursor-pointer"
+                        >
+                          Enter Squad
+                        </Button>
+                      </Link>
                     )}
                   </div>
                 </Card>

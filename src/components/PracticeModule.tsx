@@ -10,7 +10,7 @@ import { useMascot } from "@/context/MascotContext";
 
 interface PracticeModuleProps {
   lessonContent: any;
-  onComplete: () => void;
+  onComplete: (stats: { correct: boolean }) => void;
 }
 
 export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProps) {
@@ -19,6 +19,7 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
   const [fillBlankValue, setFillBlankValue] = useState("");
   const [showHint, setShowHint] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [firstTryCorrect, setFirstTryCorrect] = useState(true);
 
   const checkMcqAnswer = (index: number) => {
     setSelectedAnswer(index);
@@ -26,8 +27,9 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
     setIsCorrect(correct);
     if (correct) {
       triggerEmotion("success", 2500);
-      setTimeout(onComplete, 1600);
+      setTimeout(() => onComplete({ correct: firstTryCorrect }), 1600);
     } else {
+      setFirstTryCorrect(false);
       triggerEmotion("confused", 2500);
     }
   };
@@ -38,8 +40,9 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
     setIsCorrect(isMatch);
     if (isMatch) {
       triggerEmotion("success", 2500);
-      setTimeout(onComplete, 1600);
+      setTimeout(() => onComplete({ correct: firstTryCorrect }), 1600);
     } else {
+      setFirstTryCorrect(false);
       triggerEmotion("confused", 2500);
     }
   };
@@ -73,8 +76,8 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
             disabled={!fillBlankValue.trim() || isCorrect === true}
             className={`w-full h-12 rounded-xl font-bold transition-all shadow-md active:scale-95 arbuttonchunky text-xs ${
               isCorrect === true ? "bg-green-50 border border-green-200 text-green-600 cursor-default" : 
-              isCorrect === false ? "bg-pink-55 bg-pink-50 border border-pink-200 text-pink-600" : 
-              "bg-indigo-655 bg-indigo-600 text-white hover:bg-indigo-750"
+              isCorrect === false ? "bg-pink-50 border border-pink-200 text-pink-600" : 
+              "bg-indigo-600 text-white hover:bg-indigo-750"
             }`}
           >
             {isCorrect === true ? "Correct! Ingesting XP..." : isCorrect === false ? "Try Again" : "Submit Answer"}
@@ -101,8 +104,8 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
             if (selectedAnswer !== null) {
               if (isSelected) {
                 btnClass = isCorrectOption 
-                  ? "bg-green-50 border-green-550 border-green-500 text-green-600 shadow-[0_0_10px_rgba(16,185,129,0.05)] font-bold" 
-                  : "bg-pink-50 border-pink-550 border-pink-500 text-pink-650 shadow-[0_0_10px_rgba(244,63,94,0.05)] font-bold";
+                  ? "bg-green-50 border-green-500 text-green-600 shadow-[0_0_10px_rgba(16,185,129,0.05)] font-bold" 
+                  : "bg-pink-50 border-pink-500 text-pink-650 shadow-[0_0_10px_rgba(244,63,94,0.05)] font-bold";
               } else if (isCorrectOption) {
                 // Highlight correct option if they failed
                 btnClass = "bg-green-50/60 border-green-200 text-green-600 opacity-80 font-bold";
@@ -130,6 +133,18 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
             );
           })}
         </div>
+
+        {isCorrect === false && (
+          <Button
+            onClick={() => {
+              setSelectedAnswer(null);
+              setIsCorrect(null);
+            }}
+            className="w-full h-12 bg-indigo-600 text-white hover:bg-indigo-750 font-bold rounded-xl text-xs shadow-md active:scale-95 arbuttonchunky mt-2"
+          >
+            Try Again
+          </Button>
+        )}
       </div>
     );
   };

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
+import { NotificationService, Notification } from "@/services/notification.service";
 
 // Static nav pages to always include in search
 const NAV_PAGES = [
@@ -145,11 +146,43 @@ export function Topbar() {
     router.push("/login");
   };
 
-  const mockNotifications = [
-    { id: 1, title: "Squad Update", desc: "Alex just claimed 500 XP in Rust!", time: "5m ago" },
-    { id: 2, title: "Syllabus Ready", desc: "Your 'Machine Learning' roadmap has been generated.", time: "1h ago" },
-    { id: 3, title: "New Achievement", desc: "You unlocked the 'Daily Streak' gold emblem!", time: "2h ago" },
-  ];
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = NotificationService.listenToNotifications(user.uid, (list) => {
+      setNotifications(list);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (isNotificationsOpen && user && notifications.length > 0) {
+      const hasUnread = notifications.some(n => !n.read);
+      if (hasUnread) {
+        const timer = setTimeout(() => {
+          NotificationService.markAllAsRead(user.uid, notifications);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isNotificationsOpen, user, notifications]);
+
+  function formatTime(createdAt: string) {
+    if (!createdAt) return "";
+    try {
+      const diffMs = Date.now() - new Date(createdAt).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}d ago`;
+    } catch {
+      return "";
+    }
+  }
 
   const showDropdown = searchOpen && searchQuery.trim().length > 0;
 
@@ -301,7 +334,9 @@ export function Topbar() {
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
+            {notifications.some(n => !n.read) && (
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
+            )}
           </Button>
 
           {isNotificationsOpen && (
@@ -310,15 +345,21 @@ export function Topbar() {
                 <p className="text-[9px] text-primary font-bold uppercase tracking-wider">Alerts & Messages</p>
               </div>
               <div className="space-y-1 max-h-60 overflow-y-auto">
-                {mockNotifications.map((notif) => (
-                  <div key={notif.id} className="p-2 hover:bg-secondary/15 rounded-md transition-colors text-left">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <p className="text-[10px] font-bold text-foreground">{notif.title}</p>
-                      <span className="text-[8px] text-muted-foreground font-mono">{notif.time}</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground leading-normal">{notif.desc}</p>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-muted-foreground font-mono uppercase tracking-widest">
+                    No notifications
                   </div>
-                ))}
+                ) : (
+                  notifications.map((notif) => (
+                    <div key={notif.id} className={`p-2 hover:bg-secondary/15 rounded-md transition-colors text-left ${!notif.read ? 'bg-primary/5' : ''}`}>
+                      <div className="flex justify-between items-start mb-0.5">
+                        <p className="text-[10px] font-bold text-foreground">{notif.title}</p>
+                        <span className="text-[8px] text-muted-foreground font-mono">{formatTime(notif.createdAt)}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-normal">{notif.desc}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

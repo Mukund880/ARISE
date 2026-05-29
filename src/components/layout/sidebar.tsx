@@ -36,7 +36,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const pathname  = usePathname();
   const { user, userProfile } = useAuth();
 
-  const xp      = userProfile?.xp   || 0;
+  const xp      = Number(userProfile?.xp) || 0;
   const level   = Math.floor(xp / 1000) + 1;
   let rank = "Rookie";
   if (level >= 15) rank = "Grandmaster";
@@ -44,8 +44,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   else if (level >= 5) rank = "Scholar";
   const xpInCurrentLevel   = xp % 1000;
   const xpNeededForNextLevel = 1000;
-  const progressPercent    = Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100);
-  const xpRemaining        = xpNeededForNextLevel - xpInCurrentLevel;
+  const progressPercent    = Math.min(100, Math.max(0, Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100)));
+  const xpRemaining        = Math.max(0, xpNeededForNextLevel - xpInCurrentLevel);
 
   const hideMascot =
     pathname === "/dashboard" ||
@@ -112,8 +112,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 <div
                   className={`relative flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors duration-150 ${
                     isActive
-                      ? "text-primary font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                       ? "text-primary font-semibold"
+                       : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                   }`}
                 >
                   <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
@@ -204,21 +204,6 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             </span>
           </Link>
         </div>
-
-        {/* ── Mascot peek ───────────────────────────────────────────── */}
-        <AnimatePresence>
-          {!hideMascot && expanded && (
-            <motion.div
-              initial={{ x: -60, y: 60, opacity: 0, rotate: -45 }}
-              animate={{ x: 0,   y: 0,  opacity: 1, rotate: 0   }}
-              exit={{   x: -60, y: 60, opacity: 0, rotate: -45 }}
-              transition={{ type: "spring", stiffness: 220, damping: 22 }}
-              className="absolute bottom-16 -left-7 w-20 h-24 pointer-events-auto z-50"
-            >
-              <AriseMascot size={75} global={true} interactive={true} />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
       </motion.div>
     </aside>

@@ -41,6 +41,7 @@ export default function AdaptiveLearningPage() {
   const [showHint, setShowHint] = useState(false);
   const [claimingXp, setClaimingXp] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchTopic() {
@@ -111,6 +112,7 @@ export default function AdaptiveLearningPage() {
     setQuizCorrect(false);
     setShowHint(false);
     setClaimed(completedModules.includes(module.id));
+    setStartTime(Date.now());
     
     try {
       if (!user) throw new Error("Not authenticated");
@@ -152,12 +154,17 @@ export default function AdaptiveLearningPage() {
     }
   };
 
-  const handleCompleteModule = async () => {
+  const handleCompleteModule = async (stats?: { correct: boolean }) => {
     if (!user || !topicData || !activeModule) return;
     setClaimingXp(true);
     triggerEmotion("excited", 3500);
     try {
       const isAlreadyCompleted = completedModules.includes(activeModule.id);
+      
+      // Calculate active study minutes
+      const elapsedSeconds = startTime ? (Date.now() - startTime) / 1000 : 0;
+      const elapsedMins = Math.max(1, Math.round(elapsedSeconds / 60));
+
       if (!isAlreadyCompleted) {
         const newCompleted = [...completedModules, activeModule.id];
         const newProgress = Math.round((newCompleted.length / topicData.modules.length) * 100);
@@ -171,7 +178,7 @@ export default function AdaptiveLearningPage() {
         
         // Update user profile in Firestore
         const userRef = doc(db, "users", user.uid);
-        const currentXp = userProfile?.xp || 0;
+        const currentXp = Number(userProfile?.xp) || 0;
         const earnedXp = activeModule.xp || 100;
         const newXp = currentXp + earnedXp;
         const newLevel = Math.floor(newXp / 1000) + 1;
@@ -181,10 +188,26 @@ export default function AdaptiveLearningPage() {
         else if (newLevel >= 10) newRank = "Master";
         else if (newLevel >= 5) newRank = "Scholar";
         
+        // Update studyTime & quiz metrics
+        const currentStudyTime = Number(userProfile?.studyTime) || 0;
+        const newStudyTime = currentStudyTime + elapsedMins;
+        
+        const isCorrect = stats ? stats.correct : true;
+        const currentAnswered = Number(userProfile?.quizQuestionsAnswered) || 0;
+        const currentCorrect = Number(userProfile?.quizQuestionsCorrect) || 0;
+        const newAnswered = currentAnswered + 1;
+        const newCorrect = currentCorrect + (isCorrect ? 1 : 0);
+        const newAccuracy = Math.round((newCorrect / newAnswered) * 100);
+
         await updateDoc(userRef, {
           xp: newXp,
           level: newLevel,
-          rank: newRank
+          rank: newRank,
+          studyTime: newStudyTime,
+          quizQuestionsAnswered: newAnswered,
+          quizQuestionsCorrect: newCorrect,
+          quizAccuracy: newAccuracy,
+          updatedAt: new Date().toISOString()
         });
 
         try {
@@ -218,6 +241,7 @@ export default function AdaptiveLearningPage() {
       setClaimingXp(false);
       setActiveModule(null);
       setLessonContent(null);
+      setStartTime(null);
     }
   };
 

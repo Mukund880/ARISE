@@ -30,7 +30,8 @@ export class SocialService {
           xp: m.xp,
           level: m.level,
           rank: m.rank,
-          quizAccuracy: m.quizAccuracy
+          quizAccuracy: m.quizAccuracy,
+          studyTime: m.studyTime
         }))
       };
     });

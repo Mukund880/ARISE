@@ -46,9 +46,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
         
         if (currentUser) {
-          // Fetch or create user profile in Firestore and listen in real-time
           const userRef = doc(db, 'users', currentUser.uid);
           
+          // Perform one-time streak check and metrics initialization on login
+          try {
+            const initialSnap = await getDoc(userRef);
+            if (initialSnap.exists()) {
+              const data = initialSnap.data();
+              const today = new Date().toDateString();
+              const lastLoginDate = data.lastLoginDate;
+              
+              const updates: any = {};
+              
+              // Ensure metrics fields are initialized in database
+              if (data.studyTime === undefined) updates.studyTime = 0;
+              if (data.quizAccuracy === undefined) updates.quizAccuracy = 0;
+              if (data.quizQuestionsAnswered === undefined) updates.quizQuestionsAnswered = 0;
+              if (data.quizQuestionsCorrect === undefined) updates.quizQuestionsCorrect = 0;
+              
+              if (lastLoginDate !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toDateString();
+                
+                let newStreak = data.streak || 1;
+                if (lastLoginDate === yesterdayStr) {
+                  newStreak += 1;
+                } else {
+                  newStreak = 1;
+                }
+                
+                updates.streak = newStreak;
+                updates.lastLoginDate = today;
+                updates.lastLogin = new Date().toISOString();
+              }
+              
+              if (Object.keys(updates).length > 0) {
+                await updateDoc(userRef, updates);
+              }
+            }
+          } catch (streakErr) {
+            console.error("Error updating streak/metrics on login:", streakErr);
+          }
+
+          // Register real-time listener for updates
           unsubscribeProfile = onSnapshot(userRef, async (snapshot) => {
             if (snapshot.exists()) {
               const profileData = snapshot.data();
@@ -66,8 +107,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 rank: 'Rookie',
                 streak: 1,
                 subscriptionTier: 'scholar',
-                lastLogin: new Date(),
-                joinedAt: new Date()
+                studyTime: 0,
+                quizAccuracy: 0,
+                quizQuestionsAnswered: 0,
+                quizQuestionsCorrect: 0,
+                lastLoginDate: new Date().toDateString(),
+                lastLogin: new Date().toISOString(),
+                joinedAt: new Date().toISOString()
               };
               await setDoc(userRef, initialProfile);
               setUserProfile(initialProfile);
