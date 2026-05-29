@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Play, CheckCircle2, Lock, Flame, Zap, X, Trophy, Layers } from "lucide-react";
+import { Brain, Play, CheckCircle2, Lock, Flame, Zap, X, Trophy, Layers, Download } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -247,31 +247,201 @@ export default function AdaptiveLearningPage() {
 
   function parseMarkdown(text: string) {
     if (!text) return null;
-    return text.split("\n").map((line, i) => {
+    const lines = text.split("\n");
+    const elements: React.ReactNode[] = [];
+    
+    let inCodeBlock = false;
+    let codeBlockContent: string[] = [];
+    let codeLanguage = "";
+    
+    let inTable = false;
+    let tableRows: string[][] = [];
+
+    // Helper to format inline markdown formatting (**bold**, *italic*, `code`)
+    const formatInline = (str: string) => {
+      const parts = [];
+      let currentIdx = 0;
+      
+      const regex = /(\*\*|`|\*)(.*?)\1/g;
+      let match;
+      
+      while ((match = regex.exec(str)) !== null) {
+        const matchIdx = match.index;
+        if (matchIdx > currentIdx) {
+          parts.push(str.substring(currentIdx, matchIdx));
+        }
+        
+        const type = match[1];
+        const content = match[2];
+        
+        if (type === "**") {
+          parts.push(<strong key={matchIdx} className="font-extrabold text-slate-900">{content}</strong>);
+        } else if (type === "*") {
+          parts.push(<em key={matchIdx} className="italic text-slate-800">{content}</em>);
+        } else if (type === "`") {
+          parts.push(<code key={matchIdx} className="px-1.5 py-0.5 bg-slate-100 text-pink-600 rounded font-mono text-[11px] font-bold">{content}</code>);
+        }
+        
+        currentIdx = regex.lastIndex;
+      }
+      
+      if (currentIdx < str.length) {
+        parts.push(str.substring(currentIdx));
+      }
+      
+      return parts.length > 0 ? parts : str;
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Handle Code Block
+      if (line.trim().startsWith("```")) {
+        if (inCodeBlock) {
+          const codeString = codeBlockContent.join("\n");
+          const currentLang = codeLanguage;
+          elements.push(
+            <div key={`code-${i}`} className="relative border border-slate-200 bg-[#1E1E1E] text-[#D4D4D4] rounded-xl overflow-hidden font-mono text-[11px] my-4 shadow-md">
+              <div className="flex justify-between items-center px-4 py-2 bg-[#2D2D2D] border-b border-border/20 text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                <span>{currentLang || "code"}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(codeString);
+                    alert("Code copied to clipboard!");
+                  }}
+                  className="px-2.5 py-1 hover:bg-[#3E3E3E] hover:text-foreground rounded transition-colors text-[9px] uppercase font-mono font-bold"
+                >
+                  Copy
+                </button>
+              </div>
+              <pre className="p-4 overflow-x-auto leading-relaxed">{codeString}</pre>
+            </div>
+          );
+          codeBlockContent = [];
+          inCodeBlock = false;
+        } else {
+          inCodeBlock = true;
+          codeLanguage = line.replace("```", "").trim();
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        codeBlockContent.push(line);
+        continue;
+      }
+
+      // Handle Markdown Tables
+      if (line.trim().startsWith("|")) {
+        if (!inTable) {
+          inTable = true;
+          tableRows = [];
+        }
+        
+        if (line.includes("-") && !line.match(/[a-zA-Z0-9]/)) {
+          continue;
+        }
+
+        const cells = line.split("|").map(c => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+        tableRows.push(cells);
+        continue;
+      } else {
+        if (inTable) {
+          const header = tableRows[0] || [];
+          const body = tableRows.slice(1);
+          elements.push(
+            <div key={`table-${i}`} className="overflow-x-auto my-5 border border-slate-200 rounded-xl shadow-sm bg-[#FAF8F5]">
+              <table className="min-w-full text-[12px] border-collapse">
+                <thead>
+                  <tr className="bg-indigo-50/50 border-b border-slate-200">
+                    {header.map((cell, idx) => (
+                      <th key={idx} className="px-4 py-2.5 text-left font-black text-slate-800 uppercase tracking-wider">
+                        {formatInline(cell)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-150">
+                  {body.map((row, rowIdx) => (
+                    <tr key={rowIdx} className="hover:bg-slate-50/50 transition-colors">
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} className="px-4 py-2 text-slate-700 font-medium">
+                          {formatInline(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+          inTable = false;
+          tableRows = [];
+        }
+      }
+
+      // Regular line handling
       if (line.startsWith("### ")) {
-        return (
+        elements.push(
           <h4 key={i} className="text-base font-bold text-cyan-700 mt-5 mb-2.5 flex items-center gap-1.5 border-l-2 border-cyan-500/40 pl-2">
-            {line.replace("### ", "")}
+            {formatInline(line.replace("### ", ""))}
           </h4>
         );
-      }
-      if (line.startsWith("## ")) {
-        return (
+      } else if (line.startsWith("## ")) {
+        elements.push(
           <h3 key={i} className="text-lg font-black text-indigo-750 mt-7 mb-3.5 flex items-center gap-2">
-            {line.replace("## ", "")}
+            {formatInline(line.replace("## ", ""))}
           </h3>
         );
-      }
-      if (line.startsWith("- ") || line.startsWith("* ")) {
-        return (
+      } else if (line.startsWith("- ") || line.startsWith("* ")) {
+        elements.push(
           <li key={i} className="text-slate-700 ml-4 mb-2 list-disc leading-relaxed text-sm font-medium">
-            {line.substring(2)}
+            {formatInline(line.substring(2))}
           </li>
         );
+      } else if (line.trim() !== "") {
+        elements.push(
+          <p key={i} className="text-slate-700 leading-relaxed mb-4 text-sm font-semibold">
+            {formatInline(line)}
+          </p>
+        );
+      } else {
+        elements.push(<div key={i} className="h-2" />);
       }
-      if (line.trim() === "") return <div key={i} className="h-3" />;
-      return <p key={i} className="text-slate-700 leading-relaxed mb-4 text-sm font-medium">{line}</p>;
-    });
+    }
+
+    if (inTable && tableRows.length > 0) {
+      const header = tableRows[0] || [];
+      const body = tableRows.slice(1);
+      elements.push(
+        <div key="table-end" className="overflow-x-auto my-5 border border-slate-200 rounded-xl shadow-sm bg-[#FAF8F5]">
+          <table className="min-w-full text-[12px] border-collapse">
+            <thead>
+              <tr className="bg-indigo-50/50 border-b border-slate-200">
+                {header.map((cell, idx) => (
+                  <th key={idx} className="px-4 py-2.5 text-left font-black text-slate-800 uppercase tracking-wider">
+                    {formatInline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-150">
+              {body.map((row, rowIdx) => (
+                <tr key={rowIdx} className="hover:bg-slate-50/50 transition-colors">
+                  {row.map((cell, cellIdx) => (
+                    <td key={cellIdx} className="px-4 py-2 text-slate-700 font-medium">
+                      {formatInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return elements;
   }
 
   if (activeModule) {
@@ -319,6 +489,110 @@ export default function AdaptiveLearningPage() {
                         {parseMarkdown(lessonContent.explanation)}
                       </div>
                     </SmartTextWrapper>
+
+                    {/* Visual Concept SVG Chart */}
+                    {lessonContent.chartData && (
+                      <div className="mt-8 border border-slate-200/60 rounded-2xl p-5 bg-[#FAF8F5] space-y-4 shadow-sm">
+                        <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                          <Layers className="w-4 h-4 text-indigo-700" />
+                          <span>{lessonContent.chartData.title || "Visual Concept Comparison"}</span>
+                        </div>
+                        <div className="w-full overflow-hidden flex justify-center py-2">
+                          <svg className="w-full max-w-lg h-56" viewBox="0 0 500 240">
+                            <line x1="60" y1="20" x2="480" y2="20" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                            <line x1="60" y1="80" x2="480" y2="80" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                            <line x1="60" y1="140" x2="480" y2="140" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                            <line x1="60" y1="200" x2="480" y2="200" stroke="#CBD5E1" strokeWidth="1.5" />
+                            
+                            <text x="45" y="25" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">100%</text>
+                            <text x="45" y="85" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">50%</text>
+                            <text x="45" y="145" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">25%</text>
+                            <text x="45" y="205" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">0%</text>
+
+                            {lessonContent.chartData.labels?.map((label: string, idx: number) => {
+                              const value = lessonContent.chartData.values?.[idx] || 0;
+                              const barWidth = 40;
+                              const numLabels = lessonContent.chartData.labels.length;
+                              const gap = (400 - (numLabels * barWidth)) / (numLabels + 1);
+                              const x = 60 + gap + idx * (barWidth + gap);
+                              const height = (value / 100) * 180;
+                              const y = 200 - height;
+                              
+                              return (
+                                <g key={idx} className="group cursor-pointer">
+                                  <rect
+                                    x={x}
+                                    y={y}
+                                    width={barWidth}
+                                    height={height}
+                                    rx="4"
+                                    className="fill-cyan-500 hover:fill-indigo-500 transition-colors duration-300"
+                                  />
+                                  <text
+                                    x={x + barWidth / 2}
+                                    y={y - 8}
+                                    className="fill-slate-700 font-black text-[10px]"
+                                    textAnchor="middle"
+                                  >
+                                    {value}%
+                                  </text>
+                                  <text
+                                    x={x + barWidth / 2}
+                                    y="222"
+                                    className="fill-slate-500 font-mono text-[9px] font-bold uppercase tracking-wider"
+                                    textAnchor="middle"
+                                  >
+                                    {label}
+                                  </text>
+                                </g>
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Downloadable Source Materials */}
+                    {lessonContent.downloadableFiles && lessonContent.downloadableFiles.length > 0 && (
+                      <div className="mt-6 border border-slate-200/60 rounded-2xl p-5 bg-white space-y-4 shadow-sm">
+                        <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase tracking-wider">
+                          <Download className="w-4 h-4 text-cyan-600" />
+                          <span>Downloadable Lesson Materials</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                          {lessonContent.downloadableFiles.map((file: any, idx: number) => {
+                            const handleDownload = () => {
+                              const blob = new Blob([file.content], { type: "text/plain" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = file.name;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            };
+                            return (
+                              <div key={idx} className="flex items-center justify-between p-3.5 border border-slate-100 rounded-xl bg-[#FAF8F5] hover:bg-slate-50/50 transition-colors">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-800 truncate">{file.name}</p>
+                                  <p className="text-[9px] text-slate-400 font-mono mt-0.5">SOURCE CODE FILE</p>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={handleDownload}
+                                  className="h-8 px-3 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  <span>Download</span>
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     
                     <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} topicId={topicId} moduleId={activeModule?.id || ""} />
                   </div>

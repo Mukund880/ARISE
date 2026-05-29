@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { 
   ArrowLeft, FileText, CheckSquare, Brain, Download, 
-  Award, Clock, Target, Eye, X, BookOpen, AlertCircle, Play
+  Award, Clock, Target, Eye, X, BookOpen, AlertCircle, Play,
+  Camera, Paperclip, Trash2, Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
@@ -31,6 +32,16 @@ interface StudentAnalytics {
   totalQuestionsAttempted: number;
   totalQuestionsCorrect: number;
   completedAssignments: string[];
+  submissions?: Array<{
+    assignmentId: string;
+    submittedAt: string;
+    text: string;
+    attachments: Array<{
+      name: string;
+      url: string;
+      type: string;
+    }>;
+  }>;
   testScores?: Array<{
     testId: string;
     score: number;
@@ -63,6 +74,11 @@ export default function StudentSquadPortal() {
   const [viewingAssignment, setViewingAssignment] = useState<any>(null);
   const [submissionText, setSubmissionText] = useState("");
   const [submittingWork, setSubmittingWork] = useState(false);
+  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{ name: string, url: string, type: string }>>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Active test taker modal
   const [activeTest, setActiveTest] = useState<any>(null);
@@ -103,6 +119,7 @@ export default function StudentSquadPortal() {
           totalQuestionsAttempted: 0,
           totalQuestionsCorrect: 0,
           completedAssignments: [],
+          submissions: [],
           testScores: []
         };
         await setDoc(myAnalyticsRef, initialAnalytics);
@@ -143,6 +160,16 @@ export default function StudentSquadPortal() {
     };
   }, [squadId]);
 
+  // 2.5 Stop camera stream and clear uploads when modal closes
+  useEffect(() => {
+    if (!viewingAssignment) {
+      stopCamera();
+      setShowCamera(false);
+      setSubmissionText("");
+      setUploadedAttachments([]);
+    }
+  }, [viewingAssignment]);
+
   // 3. Increment study time inside squad when studying notes (simulated bonus)
   const handleStudyMaterial = async (materialTitle: string) => {
     if (!user || !squadId) return;
@@ -165,6 +192,86 @@ export default function StudentSquadPortal() {
     }
   };
 
+  // Camera & File Capture Helpers
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      alert("Could not access camera. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const file = new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
+          await handleUploadAttachment(file);
+        }
+      }, "image/jpeg", 0.8);
+    }
+    stopCamera();
+    setShowCamera(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleUploadAttachment(file);
+    }
+  };
+
+  const handleUploadAttachment = async (file: File) => {
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("squadId", squadId);
+
+      const res = await fetch("/api/squad-material/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upload file");
+      }
+
+      const data = await res.json();
+      setUploadedAttachments(prev => [
+        ...prev,
+        {
+          name: data.fileName,
+          url: data.fileUrl,
+          type: data.fileType
+        }
+      ]);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Error uploading file");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
   // 4. Submit Assignment
   const handleSubmitAssignment = async () => {
     if (!user || !squadId || !viewingAssignment) return;
@@ -173,13 +280,21 @@ export default function StudentSquadPortal() {
     try {
       const myAnalyticsRef = doc(db, "squads", squadId, "analytics", user.uid);
       
+      const newSubmission = {
+        assignmentId: viewingAssignment.id,
+        submittedAt: new Date().toISOString(),
+        text: submissionText,
+        attachments: uploadedAttachments
+      };
+
       // Update student's squad analytics document
       await updateDoc(myAnalyticsRef, {
         completedAssignments: arrayUnion(viewingAssignment.id),
         assignmentsCompleted: increment(1),
         xpEarned: increment(viewingAssignment.xpReward),
         studyTime: increment(5), // 5 min bonus for completing assignment
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
+        submissions: arrayUnion(newSubmission)
       });
 
       // Update student's global user document (increment XP and study time)
@@ -226,6 +341,9 @@ export default function StudentSquadPortal() {
       alert("Work submitted successfully!");
       setViewingAssignment(null);
       setSubmissionText("");
+      setUploadedAttachments([]);
+      stopCamera();
+      setShowCamera(false);
     } catch (err) {
       console.error(err);
       alert("Error submitting work.");
@@ -652,9 +770,97 @@ export default function StudentSquadPortal() {
                   />
                 </div>
 
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">Attachments</label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (showCamera) {
+                            stopCamera();
+                            setShowCamera(false);
+                          } else {
+                            setShowCamera(true);
+                            startCamera();
+                          }
+                        }}
+                        className="h-8 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 border-border"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        {showCamera ? "Close Camera" : "Camera Photo"}
+                      </Button>
+                      <label className="h-8 px-3 border border-border bg-card rounded-md hover:bg-secondary/15 transition-all text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 cursor-pointer">
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span>Upload File</span>
+                        <input
+                          type="file"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Camera live video view */}
+                  {showCamera && (
+                    <div className="border border-border rounded-lg overflow-hidden bg-black relative flex flex-col items-center">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full max-h-[200px] object-cover"
+                      />
+                      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+                        <Button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="bg-primary text-primary-foreground font-mono text-[9px] uppercase tracking-widest h-8 px-4"
+                        >
+                          Capture Snapshot
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attachment list */}
+                  {uploadedAttachments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {uploadedAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-secondary/15 border border-border/50 rounded-md">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="text-[10px] font-mono text-foreground truncate">{att.name}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setUploadedAttachments(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {uploadingAttachment && (
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                      <span>UPLOADING ATTACHMENT...</span>
+                    </div>
+                  )}
+                </div>
+
                 <Button 
                   onClick={handleSubmitAssignment}
-                  disabled={submittingWork || !submissionText.trim()}
+                  disabled={submittingWork || (!submissionText.trim() && uploadedAttachments.length === 0)}
                   className="w-full h-11 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest disabled:opacity-50"
                 >
                   {submittingWork ? "Submitting..." : "Submit to Teacher"}

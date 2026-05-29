@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, Send, Brain, Bot, User } from "lucide-react";
+import { MessageSquare, X, Send, Brain, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useParams } from "next/navigation";
 import { useMascot } from "@/context/MascotContext";
+import { AriseMascot } from "@/components/AriseMascot";
 
 export function AITutorChat() {
   const params = useParams();
@@ -14,7 +15,7 @@ export function AITutorChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState<{role: 'user'|'assistant', content: string}[]>([
-    { role: 'assistant', content: "Hi there! I'm your AI Tutor. Need help understanding a concept or stuck on a quiz? Ask me anything!" }
+    { role: 'assistant', content: "Hello! I am ARIS, your Interactive Study Companion. 🚀 Need help understanding a concept, coding up an example, or running through your learning modules? Ask me anything!" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   
@@ -89,11 +90,11 @@ export function AITutorChat() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                  <Brain className="w-5 h-5 text-indigo-500" />
+                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 overflow-hidden">
+                  <AriseMascot size={32} interactive={false} state="idle" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-800">AI Tutor</h3>
+                  <h3 className="font-extrabold text-sm text-slate-800">ARIS Companion</h3>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Online & Context Aware</span>
@@ -110,8 +111,8 @@ export function AITutorChat() {
               {history.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`w-8 h-8 rounded-full flex shrink-0 items-center justify-center border border-slate-100 ${msg.role === 'user' ? 'bg-cyan-50 text-cyan-600' : 'bg-indigo-50 text-indigo-650'}`}>
-                      {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                    <div className={`w-8 h-8 rounded-full flex shrink-0 items-center justify-center border border-slate-100 ${msg.role === 'user' ? 'bg-cyan-50 text-cyan-600' : 'bg-transparent overflow-hidden'}`}>
+                      {msg.role === 'user' ? <User className="w-4 h-4" /> : <AriseMascot size={26} interactive={false} state="happy" />}
                     </div>
                     <div className={`p-3.5 rounded-2xl text-xs leading-relaxed font-semibold ${msg.role === 'user' ? 'bg-cyan-500/10 text-cyan-800 border border-cyan-500/20 rounded-tr-sm' : 'bg-white text-slate-700 border border-slate-200/50 rounded-tl-sm shadow-sm'}`}>
                       {msg.content}
@@ -122,8 +123,8 @@ export function AITutorChat() {
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="flex gap-3 max-w-[85%] flex-row">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 border border-slate-100 text-indigo-500 flex items-center justify-center">
-                      <Bot className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-full bg-transparent border border-slate-100 overflow-hidden flex items-center justify-center">
+                      <AriseMascot size={26} interactive={false} state="thinking" />
                     </div>
                     <div className="p-3.5 rounded-2xl bg-white text-slate-700 border border-slate-200/50 rounded-tl-sm flex gap-1 items-center shadow-sm">
                       <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />

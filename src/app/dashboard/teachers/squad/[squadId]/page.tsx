@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { 
   ArrowLeft, Users, FileText, CheckSquare, Brain, Plus, Trash2, Calendar, 
-  Upload, Download, Award, Clock, Target, Eye, X, BookOpen, AlertCircle
+  Upload, Download, Award, Clock, Target, Eye, X, BookOpen, AlertCircle,
+  Paperclip, ExternalLink
 } from "lucide-react";
 import Link from "next/link";
 import { db, storage } from "@/lib/firebase";
@@ -32,6 +33,16 @@ interface StudentAnalytics {
   totalQuestionsAttempted: number;
   totalQuestionsCorrect: number;
   completedAssignments: string[];
+  submissions?: Array<{
+    assignmentId: string;
+    submittedAt: string;
+    text: string;
+    attachments: Array<{
+      name: string;
+      url: string;
+      type: string;
+    }>;
+  }>;
   lastActive?: string;
 }
 
@@ -180,55 +191,54 @@ export default function TeacherSquadConsole() {
     if (!noteFile || !noteTitle.trim()) return;
 
     setUploadingNote(true);
-    setUploadProgress(0);
+    setUploadProgress(20);
 
     try {
-      const storageRef = ref(storage, `squads/${squadId}/notes/${Date.now()}_${noteFile.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, noteFile);
+      const formData = new FormData();
+      formData.append("file", noteFile);
+      formData.append("squadId", squadId);
 
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(Math.round(progress));
-        },
-        (error) => {
-          console.error(error);
-          alert("Upload failed. Make sure storage bucket is set up.");
-          setUploadingNote(false);
-          setUploadProgress(null);
-        },
-        async () => {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          // Save note in firestore
-          await addDoc(collection(db, "squads", squadId, "notes"), {
-            title: noteTitle,
-            fileName: noteFile.name,
-            fileUrl: downloadUrl,
-            fileType: noteFile.name.split(".").pop() || "unknown",
-            uploadedAt: new Date().toISOString()
-          });
+      setUploadProgress(50);
+      const res = await fetch("/api/squad-material/upload", {
+        method: "POST",
+        body: formData
+      });
 
-          // Notify all squad members
-          await NotificationService.notifySquadMembers(
-            squadId,
-            "New Study Material Uploaded",
-            `New note material: "${noteTitle}" has been uploaded in squad ${squad.name}.`
-          );
+      if (!res.ok) {
+        throw new Error("Failed to upload file to local server");
+      }
 
-          alert("Material uploaded successfully!");
-          setNoteTitle("");
-          setNoteFile(null);
-          setUploadingNote(false);
-          setUploadProgress(null);
-          if (fileInputRef.current) fileInputRef.current.value = "";
-        }
+      setUploadProgress(80);
+      const data = await res.json();
+
+      // Save note in firestore
+      await addDoc(collection(db, "squads", squadId, "notes"), {
+        title: noteTitle,
+        fileName: data.fileName,
+        fileUrl: data.fileUrl,
+        fileType: data.fileType,
+        uploadedAt: new Date().toISOString()
+      });
+
+      // Notify all squad members
+      await NotificationService.notifySquadMembers(
+        squadId,
+        "New Study Material Uploaded",
+        `New note material: "${noteTitle}" has been uploaded in squad ${squad.name}.`
       );
-    } catch (err) {
-      console.error(err);
-      alert("Error uploading note.");
+
+      setUploadProgress(100);
+      alert("Material uploaded successfully!");
+      setNoteTitle("");
+      setNoteFile(null);
       setUploadingNote(false);
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Error uploading note.");
+      setUploadingNote(false);
+      setUploadProgress(null);
     }
   };
 
@@ -495,10 +505,10 @@ export default function TeacherSquadConsole() {
             {/* Student Analytics Sidepanel */}
             <div className="space-y-6">
               {selectedStudent ? (
-                <Card className="p-6 border-border bg-card rounded-lg shadow-sm relative overflow-hidden flex flex-col justify-between h-full">
+                <Card className="p-6 border-border bg-card rounded-lg shadow-sm relative overflow-hidden flex flex-col justify-between h-fit max-h-[85vh]">
                   <div className="absolute -top-12 -right-12 w-24 h-24 bg-primary/5 blur-xl pointer-events-none" />
                   
-                  <div className="space-y-6">
+                  <div className="space-y-6 overflow-y-auto pr-1">
                     <div className="flex justify-between items-start border-b border-border/40 pb-4">
                       <div>
                         <h3 className="font-extrabold text-sm text-foreground">{selectedStudent.displayName}</h3>
@@ -564,6 +574,75 @@ export default function TeacherSquadConsole() {
                               <span>Last Active inside Squad:</span>
                               <span className="font-mono text-foreground">{stats.lastActive ? new Date(stats.lastActive).toLocaleDateString() : "Never"}</span>
                             </div>
+                          </div>
+
+                          <div className="border-t border-border/40 pt-4 space-y-3">
+                            <p className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Submissions ({stats.submissions?.length || 0})</p>
+                            {(!stats.submissions || stats.submissions.length === 0) ? (
+                              <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider text-center py-4 bg-secondary/5 border border-border/40 border-dashed rounded-md">No assignment submissions yet</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {stats.submissions.map((sub, idx) => {
+                                  const assignment = assignments.find(a => a.id === sub.assignmentId);
+                                  return (
+                                    <div key={idx} className="p-3 bg-secondary/15 border border-border/40 rounded-lg space-y-2">
+                                      <div className="flex justify-between items-start gap-2">
+                                        <p className="text-xs font-bold text-foreground line-clamp-1">{assignment ? assignment.title : "Unknown Assignment"}</p>
+                                        <span className="text-[8px] text-muted-foreground font-mono shrink-0">{new Date(sub.submittedAt).toLocaleDateString()}</span>
+                                      </div>
+                                      
+                                      {sub.text && (
+                                        <p className="text-[11px] text-muted-foreground whitespace-pre-wrap p-2 bg-background border border-border/40 rounded-md italic">
+                                          {sub.text}
+                                        </p>
+                                      )}
+
+                                      {sub.attachments && sub.attachments.length > 0 && (
+                                        <div className="space-y-1.5 pt-1">
+                                          <p className="text-[9px] font-mono text-muted-foreground font-bold uppercase">Attachments:</p>
+                                          <div className="grid grid-cols-1 gap-1.5">
+                                            {sub.attachments.map((att, attIdx) => {
+                                              const isImage = att.type?.toLowerCase().includes("image") || 
+                                                              att.name?.toLowerCase().endsWith(".jpg") || 
+                                                              att.name?.toLowerCase().endsWith(".jpeg") || 
+                                                              att.name?.toLowerCase().endsWith(".png") ||
+                                                              att.name?.toLowerCase().endsWith(".gif");
+                                              return (
+                                                <div key={attIdx} className="flex flex-col p-2 bg-background/50 border border-border/40 rounded-md gap-2">
+                                                  <div className="flex items-center justify-between min-w-0">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                      <Paperclip className="w-3 h-3 text-primary shrink-0" />
+                                                      <span className="text-[9px] font-mono text-foreground truncate">{att.name}</span>
+                                                    </div>
+                                                    <a 
+                                                      href={att.url} 
+                                                      target="_blank" 
+                                                      rel="noreferrer"
+                                                      className="p-1 text-primary hover:bg-primary/10 rounded-md shrink-0 transition-colors"
+                                                    >
+                                                      <ExternalLink className="w-3.5 h-3.5" />
+                                                    </a>
+                                                  </div>
+                                                  {isImage && (
+                                                    <div className="border border-border/40 rounded overflow-hidden max-h-[120px] bg-black/5 flex justify-center">
+                                                      <img 
+                                                        src={att.url} 
+                                                        alt={att.name} 
+                                                        className="object-contain max-h-[120px] w-auto"
+                                                      />
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
