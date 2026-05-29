@@ -161,7 +161,7 @@ export default function SquadsPage() {
                       </span>
                     </div>
 
-                    {joinedSquadId === squad.id && (
+                    {joinedSquadIds.includes(squad.id) && (
                       <Button
                         disabled={true}
                         className={`w-full h-10 rounded-md font-mono text-xs uppercase tracking-wider transition-all cursor-default bg-primary/10 border border-primary/30 text-primary`}
