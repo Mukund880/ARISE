@@ -31,6 +31,13 @@ export default function AdaptiveLearningPage() {
   }, []);
   const [loading, setLoading] = useState(true);
 
+  // Gamification Success & Alert states
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [completedXp, setCompletedXp] = useState(100);
+  const [completedTitle, setCompletedTitle] = useState("");
+  const [successMascot, setSuccessMascot] = useState<any>("great_job");
+
   // Lesson states
   const [activeModule, setActiveModule] = useState<any>(null);
   const [loadingLesson, setLoadingLesson] = useState(false);
@@ -160,6 +167,13 @@ export default function AdaptiveLearningPage() {
     triggerEmotion("excited", 3500);
     try {
       const isAlreadyCompleted = completedModules.includes(activeModule.id);
+      const earnedXp = activeModule.xp || 100;
+      setCompletedXp(earnedXp);
+      setCompletedTitle(activeModule.title);
+      
+      const mascotStates = ["great_job", "celebrating", "cheering", "high_five", "success"];
+      const randomState = mascotStates[Math.floor(Math.random() * mascotStates.length)];
+      setSuccessMascot(randomState);
       
       // Calculate active study minutes
       const elapsedSeconds = startTime ? (Date.now() - startTime) / 1000 : 0;
@@ -242,6 +256,7 @@ export default function AdaptiveLearningPage() {
       setActiveModule(null);
       setLessonContent(null);
       setStartTime(null);
+      setShowSuccessModal(true);
     }
   };
 
@@ -307,11 +322,12 @@ export default function AdaptiveLearningPage() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(codeString);
-                    alert("Code copied to clipboard!");
+                    setCopiedId(`code-${i}`);
+                    setTimeout(() => setCopiedId(null), 2000);
                   }}
-                  className="px-2.5 py-1 hover:bg-[#3E3E3E] hover:text-foreground rounded transition-colors text-[9px] uppercase font-mono font-bold"
+                  className="px-2.5 py-1 hover:bg-[#3E3E3E] hover:text-foreground rounded transition-colors text-[9px] uppercase font-mono font-bold cursor-pointer"
                 >
-                  Copy
+                  {copiedId === `code-${i}` ? "Copied! ✓" : "Copy"}
                 </button>
               </div>
               <pre className="p-4 overflow-x-auto leading-relaxed">{codeString}</pre>
@@ -768,6 +784,54 @@ export default function AdaptiveLearningPage() {
           </Card>
         </div>
       </div>
+
+      {/* Gamification Success Celebration Modal */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-sm bg-[#FDFBF7] border border-slate-200 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-center flex flex-col items-center"
+            >
+              {/* Confetti-style background glow */}
+              <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-20 bg-indigo-500" />
+              <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-20 bg-cyan-500" />
+
+              {/* Mascot section */}
+              <div className="mb-4 mt-2">
+                <AriseMascot size={130} state={successMascot} interactive={false} />
+              </div>
+
+              {/* Title & Message */}
+              <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2 leading-snug">
+                {successMascot === "great_job" ? "Great Job! 🏆" :
+                 successMascot === "celebrating" ? "Phenomenal! 🎉" :
+                 successMascot === "cheering" ? "Sensational! 🌟" :
+                 successMascot === "high_five" ? "High Five! ✋" : "Success! ⚡"}
+              </h3>
+              <p className="text-xs text-slate-650 leading-relaxed font-bold mb-4 px-2">
+                You successfully mastered <strong className="text-slate-800 capitalize font-extrabold">"{completedTitle}"</strong> and earned:
+              </p>
+
+              {/* Gained points badge */}
+              <div className="bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-2xl mb-6 inline-flex items-center gap-2 shadow-inner">
+                <span className="text-lg">🔥</span>
+                <span className="text-sm font-black text-amber-700">+{completedXp} XP Reward Claimed</span>
+              </div>
+
+              {/* Action buttons */}
+              <Button 
+                onClick={() => setShowSuccessModal(false)}
+                className="bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl h-11 px-8 text-xs w-full shadow-md active:scale-95 transition-transform cursor-pointer arbuttonchunky"
+              >
+                Continue Curriculum
+              </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

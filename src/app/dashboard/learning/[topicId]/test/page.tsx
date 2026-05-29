@@ -25,6 +25,7 @@ export default function TopicTestPage() {
   const [score, setScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [gated, setGated] = useState(false);
 
   useEffect(() => {
     async function initTest() {
@@ -39,8 +40,8 @@ export default function TopicTestPage() {
           const completedCount = (tData.completedModules || []).length;
           const totalCount = (tData.modules || []).length;
           if (completedCount < totalCount && totalCount > 0) {
-            alert("Please complete all modules of the learning topic before attempting the Grand Test!");
-            router.push(`/dashboard/learning/${topicId}`);
+            setGated(true);
+            setLoading(false);
             return;
           }
 
@@ -152,6 +153,37 @@ export default function TopicTestPage() {
         <AriseMascot size={110} state="thinking" />
         <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">Assembling Grand Test...</h3>
         <p className="text-xs text-slate-500 leading-relaxed font-semibold">Retrieving curriculum context metrics and generating challenge questions.</p>
+      </div>
+    );
+  }
+
+  if (gated) {
+    return (
+      <div className="max-w-md mx-auto py-20 text-center space-y-6 flex flex-col items-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          className="relative inline-block"
+        >
+          <AriseMascot size={150} state="warning" interactive={false} />
+        </motion.div>
+
+        <div className="space-y-3 px-4">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Grand Test Locked! 🔒</h1>
+          <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+            Wait! You need to complete all modules of <strong className="text-slate-700 capitalize">{topicData?.title || 'this topic'}</strong> before you can unlock and attempt the Grand Test.
+          </p>
+        </div>
+
+        <div className="pt-2">
+          <Button 
+            onClick={() => router.push(`/dashboard/learning/${topicId}`)} 
+            className="bg-indigo-650 bg-indigo-600 hover:bg-indigo-750 text-white font-bold px-8 h-11 text-xs rounded-xl active:scale-95 transition-all arbuttonchunky shadow-md cursor-pointer"
+          >
+            Resume Learning
+          </Button>
+        </div>
       </div>
     );
   }

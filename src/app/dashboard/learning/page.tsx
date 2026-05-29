@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AriseMascot } from "@/components/AriseMascot";
 import { Input } from "@/components/ui/input";
+import { ArisPopupModal } from "@/components/ArisPopupModal";
 
 export default function MyLearningPage() {
   const { user } = useAuth();
@@ -20,6 +21,15 @@ export default function MyLearningPage() {
   const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Custom Alert/Confirm Modal states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<"info" | "warning" | "success" | "confirm">("info");
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalMascot, setModalMascot] = useState<any>("idle");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
 
   useEffect(() => {
     async function fetchTopics() {
@@ -38,21 +48,42 @@ export default function MyLearningPage() {
     fetchTopics();
   }, [user]);
 
-  const handleDeleteTopic = async (e: React.MouseEvent, topicId: string, topicTitle: string) => {
+  const handleDeleteTopic = (e: React.MouseEvent, topicId: string, topicTitle: string) => {
     e.stopPropagation();
     if (!user) return;
-    if (!confirm(`Are you sure you want to delete and exit the roadmap for "${topicTitle}"? This cannot be undone.`)) {
-      return;
-    }
+    
+    setPendingDeleteId(topicId);
+    setPendingDeleteTitle(topicTitle);
+    
+    setModalTitle("Delete Roadmap? ⚠️");
+    setModalMessage(`Are you sure you want to delete and exit the roadmap for "${topicTitle}"? This cannot be undone.`);
+    setModalType("confirm");
+    setModalMascot("warning");
+    setModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!pendingDeleteId || !user) return;
     try {
-      const topicRef = doc(db, "users", user.uid, "topics", topicId);
+      const topicRef = doc(db, "users", user.uid, "topics", pendingDeleteId);
       await deleteDoc(topicRef);
-      setTopics(prev => prev.filter(t => t.id !== topicId));
-      alert(`Roadmap "${topicTitle}" successfully deleted.`);
+      setTopics(prev => prev.filter(t => t.id !== pendingDeleteId));
+      
+      setModalTitle("Roadmap Deleted! ✓");
+      setModalMessage(`Roadmap "${pendingDeleteTitle}" has been successfully deleted.`);
+      setModalType("success");
+      setModalMascot("happy");
+      setModalOpen(true);
     } catch (err) {
       console.error("Error deleting roadmap:", err);
-      alert("Failed to delete roadmap.");
+      setModalTitle("Deletion Failed ❌");
+      setModalMessage("Failed to delete roadmap. Please check your network and try again.");
+      setModalType("warning");
+      setModalMascot("error");
+      setModalOpen(true);
+    } finally {
+      setPendingDeleteId(null);
+      setPendingDeleteTitle("");
     }
   };
 
@@ -204,6 +235,18 @@ export default function MyLearningPage() {
           )}
         </div>
       )}
+
+      {/* Custom Popup Alert / Confirmation Modal */}
+      <ArisPopupModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        type={modalType}
+        title={modalTitle}
+        message={modalMessage}
+        mascotState={modalMascot}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

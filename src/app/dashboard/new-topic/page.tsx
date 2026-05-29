@@ -34,6 +34,10 @@ export default function NewTopicPage() {
   const [loadingKg, setLoadingKg] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // Interactive Loader states
+  const [loaderStep, setLoaderStep] = useState(0);
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -78,6 +82,80 @@ export default function NewTopicPage() {
 
     return () => clearTimeout(handler);
   }, [topic]);
+
+  // Interactive Loader timeline effect
+  useEffect(() => {
+    if (!isGenerating) {
+      setLoaderStep(0);
+      setConsoleLogs([]);
+      return;
+    }
+
+    const steps = [
+      {
+        status: "Querying Google Knowledge Graph API...",
+        mascot: "searching" as const,
+        logs: [
+          "Initiating connection to Google Knowledge Graph...",
+          "Validating topic entities and conceptual keywords...",
+          "Resolved entity matches. Retrieved 3 semantic descriptors."
+        ]
+      },
+      {
+        status: "Scanning Pinecone Vector Store...",
+        mascot: "scanning" as const,
+        logs: [
+          "Scanning Pinecone namespace indexes...",
+          "Searching for uploaded PDF/markdown contextual references...",
+          "Merged vector results: 2 context fragments loaded."
+        ]
+      },
+      {
+        status: "Formulating Adaptive Syllabus...",
+        mascot: "thinking" as const,
+        logs: [
+          "Connecting to Google Gemini API (gemini-2.5-flash)...",
+          "Drafting study modules & sequential prerequisites...",
+          "Determining duration estimations and learning objectives..."
+        ]
+      },
+      {
+        status: "Structuring Gamified Milestones...",
+        mascot: "processing" as const,
+        logs: [
+          "Assigning difficulty points & module XP weights...",
+          "Adding badge multipliers and milestone triggers...",
+          "Syllabus structural validation complete."
+        ]
+      },
+      {
+        status: "Assembling Study Blocks...",
+        mascot: "excited" as const,
+        logs: [
+          "Formatting output to high-fidelity roadmap structures...",
+          "Caching modules to Firestore users collection...",
+          "Redirecting to your study details viewport..."
+        ]
+      }
+    ];
+
+    // Push initial logs for step 0
+    setConsoleLogs(steps[0].logs);
+
+    const interval = setInterval(() => {
+      setLoaderStep(prev => {
+        const next = prev + 1;
+        if (next < steps.length) {
+          // Add logs for the next step
+          setConsoleLogs(current => [...current, ...steps[next].logs]);
+          return next;
+        }
+        return prev;
+      });
+    }, 4500); // cycle step every 4.5 seconds
+
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const handleNext = () => setStep((s) => Math.min(s + 1, totalSteps));
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
@@ -228,27 +306,55 @@ export default function NewTopicPage() {
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500/5 blur-[100px] rounded-full pointer-events-none" />
             
             {isGenerating ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 relative overflow-visible">
-                {/* Immersive Mascot sleeping on the progress bar */}
-                <div className="relative w-64 mt-8 overflow-visible">
-                  <div className="absolute -top-16 left-1/2 -translate-x-1/2 pointer-events-none z-20">
-                    <AriseMascot size={75} global={true} />
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 relative overflow-visible py-6">
+                <div className="flex flex-col items-center">
+                  {/* Highly Interactive Mascot based on current active step */}
+                  <AriseMascot 
+                    size={130} 
+                    state={
+                      loaderStep === 0 ? "searching" :
+                      loaderStep === 1 ? "scanning" :
+                      loaderStep === 2 ? "thinking" :
+                      loaderStep === 3 ? "processing" : "excited"
+                    } 
+                    interactive={false} 
+                  />
+                  <div className="mt-4 space-y-1">
+                    <h3 className="text-lg font-black text-slate-800 tracking-tight">
+                      {loaderStep === 0 ? "Querying Knowledge Graph..." :
+                       loaderStep === 1 ? "Searching Reference Docs..." :
+                       loaderStep === 2 ? "Synthesizing Roadmap..." :
+                       loaderStep === 3 ? "Configuring Gamification..." :
+                       "Finalizing Study Blocks..."}
+                    </h3>
+                    <p className="text-[10px] text-indigo-500 font-extrabold uppercase tracking-widest animate-pulse">
+                      ARIS is building your path
+                    </p>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/50">
-                    <motion.div 
-                      className="bg-gradient-to-r from-cyan-400 via-indigo-500 to-pink-500 h-full rounded-full"
-                      animate={{ width: ["15%", "85%"] }}
-                      transition={{ duration: 8, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-extrabold uppercase mt-2.5 tracking-wider animate-pulse">
-                    ARIS is dreaming up your path...
-                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold animate-pulse text-slate-800">Configuring Syllabus...</h3>
-                  <p className="text-xs text-slate-500 max-w-sm font-medium">Generating adaptive roadmap structure powered by Gemini-1.5-Pro.</p>
+                {/* Animated Console / Terminal */}
+                <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-4 text-left font-mono text-[10px] leading-relaxed text-cyan-400 shadow-inner h-44 overflow-hidden relative">
+                  <div className="flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                    <span className="text-[9px] text-slate-500 font-bold ml-2 select-none">aris@arise-lms:~</span>
+                  </div>
+                  <div className="space-y-1 h-32 overflow-y-auto">
+                    {consoleLogs.map((log, index) => (
+                      <div key={index} className="flex gap-2">
+                        <span className="text-indigo-400">⚡</span>
+                        <span className="text-slate-300 font-semibold">{log}</span>
+                      </div>
+                    ))}
+                    {/* Spinning cursor */}
+                    <div className="flex gap-2 text-cyan-400 font-bold animate-pulse pt-1">
+                      <span>⚡</span>
+                      <span>Processing instructions...</span>
+                      <span className="animate-ping">|</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
