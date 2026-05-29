@@ -46,13 +46,24 @@ export default function TopicTestPage() {
 
           setTopicData(tData);
 
-          const res = await fetch("/api/generate-test", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ topicTitle: tData.title, level: tData.level })
-          });
-          const data = await res.json();
-          if (data.questions) setQuestions(data.questions);
+          // Retrieve cached test questions from Firestore if they exist
+          if (tData.testQuestions && Array.isArray(tData.testQuestions) && tData.testQuestions.length > 0) {
+            setQuestions(tData.testQuestions);
+          } else {
+            const res = await fetch("/api/generate-test", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ topicTitle: tData.title, level: tData.level })
+            });
+            const data = await res.json();
+            if (data.questions) {
+              setQuestions(data.questions);
+              // Save to Firestore so subsequent loads read it directly from the database
+              await updateDoc(docRef, {
+                testQuestions: data.questions
+              });
+            }
+          }
         }
       } catch (err) {
         console.error(err);
@@ -87,6 +98,12 @@ export default function TopicTestPage() {
       method: "POST",
       body: JSON.stringify({ userId: user.uid, topicId, score: finalScore })
     }).catch(e => console.error(e));
+
+    // Clear test questions in Firestore so that any retake generates a fresh test
+    const topicDocRef = doc(db, "users", user.uid, "topics", topicId);
+    await updateDoc(topicDocRef, {
+      testQuestions: null
+    }).catch(e => console.error("Failed to clear test questions cache:", e));
 
     // Award bonus XP for finishing test
     if (finalScore >= 60) {
