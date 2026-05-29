@@ -2,35 +2,39 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Brain, Globe, Sparkles, Zap, Award, Target, BookOpen } from "lucide-react";
+import { ArrowRight, Brain, Globe, Sparkles, Zap, Award, Target, BookOpen, ChevronRight, Activity, Smile } from "lucide-react";
 import Link from "next/link";
 import { AriseMascot } from "@/components/AriseMascot";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
-      {/* Immersive subtle background warm gold glow */}
-      <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[50%] bg-primary/5 blur-[130px] rounded-full pointer-events-none" />
-      <div className="absolute top-[20%] right-[-10%] w-[50%] h-[60%] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
+    <div className="min-h-screen bg-[#070A13] text-[#F8FAFC] overflow-hidden relative font-sans">
+      {/* Grid Pattern Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 md:px-12 py-3 sm:py-5 backdrop-blur-md bg-background/70 border-b border-border">
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
-          <div className="p-2 bg-primary/5 border border-primary/30 rounded-lg transition-transform group-hover:scale-105">
-            <Brain className="w-4 sm:w-5 h-4 sm:h-5 text-primary" />
+      {/* Decorative Radial Glowing Orbs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[60%] bg-indigo-500/10 blur-[130px] rounded-full pointer-events-none" />
+      <div className="absolute top-[30%] right-[-10%] w-[60%] h-[70%] bg-amber-500/5 blur-[160px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] bg-cyan-500/10 blur-[140px] rounded-full pointer-events-none" />
+
+      {/* Glassmorphic Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-12 py-4 backdrop-blur-lg bg-[#070A13]/85 border-b border-slate-800/40">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="p-2 bg-gradient-to-br from-indigo-500/10 to-amber-500/10 border border-slate-700/60 rounded-xl transition-transform group-hover:scale-105 shadow-inner">
+            <Brain className="w-5 h-5 text-indigo-400" />
           </div>
-          <span className="text-lg sm:text-xl font-bold tracking-widest text-primary uppercase">
+          <span className="text-xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 to-amber-300 uppercase font-mono">
             ARISE
           </span>
         </Link>
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-4">
           <Link href="/login">
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-md transition-all font-mono text-xs uppercase tracking-wider px-2 sm:px-4">
+            <Button variant="ghost" className="text-slate-400 hover:text-[#F8FAFC] hover:bg-slate-800/20 rounded-lg transition-all font-mono text-xs uppercase tracking-wider px-4">
               Log In
             </Button>
           </Link>
           <Link href="/signup">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 font-mono text-xs uppercase tracking-wider rounded-md px-3 sm:px-5 py-2 sm:py-2.5 transition-all shadow-sm h-9 sm:h-10">
+            <Button className="bg-gradient-to-r from-indigo-500 to-amber-500 hover:from-indigo-600 hover:to-amber-600 text-[#F8FAFC] border-none font-mono text-xs uppercase tracking-wider rounded-lg px-5 py-2.5 transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] h-10">
               Get Started
             </Button>
           </Link>
@@ -38,78 +42,89 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 pt-24 sm:pt-32 text-center">
+      <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 pt-32 text-center pb-12">
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="max-w-4xl mx-auto flex flex-col items-center"
         >
-          {/* Animated Badge */}
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 mb-6 sm:mb-8 border border-primary/25 bg-primary/5 rounded-md backdrop-blur-sm">
-            <Sparkles className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-primary animate-pulse shrink-0" />
-            <span className="text-[9px] sm:text-[10px] font-mono font-bold text-primary uppercase tracking-widest">
-              AI Tutor & Gamified Study
+          {/* Animated Glow Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 border border-indigo-500/30 bg-indigo-500/5 rounded-full backdrop-blur-md shadow-lg animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="text-[10px] font-mono font-bold text-indigo-300 uppercase tracking-widest">
+              AI-Powered Gamified Syllabus Ecosystem
             </span>
           </div>
           
-          {/* Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.15] text-foreground font-heading">
+          {/* Main Headline */}
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1] text-foreground font-heading">
             Learn inside a <br />
-            <span className="text-primary italic">living study ecosystem.</span>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-amber-300 to-cyan-300">
+              living study universe.
+            </span>
           </h1>
 
-          {/* Interactive Mascot Highlight */}
-          <div className="my-6 sm:my-8 relative flex flex-col items-center group">
-            <div className="absolute inset-0 bg-primary/5 rounded-lg blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
-            <AriseMascot state="wave" size={80} framed={true} />
-            <div className="mt-2 sm:mt-4 bg-card border border-border px-3 sm:px-4 py-1 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-mono text-primary font-bold shadow-sm">
-              "Hi! I'm ARIS, your learning companion!"
+          {/* Description */}
+          <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl leading-relaxed px-4">
+            Upload study files or select any topic. Experience adaptive syllabi, interactive visual aids, active recall exercises, and high-octane gamified XP progression.
+          </p>
+
+          {/* Interactive Mascot Highlight Box */}
+          <div className="my-8 relative flex flex-col items-center group p-6 rounded-2xl bg-slate-900/40 border border-slate-800/60 backdrop-blur-sm max-w-md shadow-2xl transition-all hover:border-indigo-500/30">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-amber-500/5 rounded-2xl pointer-events-none" />
+            <div className="relative z-10 flex items-center gap-4">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-center shrink-0">
+                <AriseMascot state="wave" size={80} interactive={true} />
+              </div>
+              <div className="text-left space-y-1">
+                <p className="text-xs font-bold text-indigo-400 font-mono uppercase tracking-widest flex items-center gap-1.5">
+                  <Smile className="w-3.5 h-3.5 text-amber-400" /> ARIS Companion
+                </p>
+                <p className="text-slate-300 text-xs leading-relaxed italic">
+                  "Hi! I am ARIS. Let's design a custom roadmap and lock in your study streak today!"
+                </p>
+              </div>
             </div>
           </div>
           
-          {/* Description */}
-          <p className="text-xs sm:text-sm md:text-base text-muted-foreground mb-6 sm:mb-10 max-w-2xl leading-relaxed px-2">
-            Upload content or pick a topic. Get custom roadmaps, visual aids, quizzes, and rewards for consistency.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto px-2">
+          {/* Action CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto px-4 mt-2">
             <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 h-10 sm:h-12 px-6 sm:px-8 text-xs font-mono uppercase tracking-wider rounded-md group shadow-sm transition-transform active:scale-[0.98]">
-                Start Free
-                <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform hidden sm:inline" />
+              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-amber-500 hover:from-indigo-600 hover:to-amber-600 text-white h-12 px-8 text-xs font-mono uppercase tracking-wider rounded-lg group shadow-lg transition-all active:scale-[0.98] cursor-pointer">
+                Enter Dashboard
+                <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Link href="/signup" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-border bg-card/50 hover:bg-secondary/15 h-10 sm:h-12 px-6 sm:px-8 text-xs font-mono uppercase tracking-wider rounded-md backdrop-blur-sm transition-all text-foreground">
-                Join Squads
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-700/60 bg-slate-900/40 hover:bg-slate-800/30 h-12 px-8 text-xs font-mono uppercase tracking-wider rounded-lg backdrop-blur-md transition-all text-slate-300 hover:text-white cursor-pointer">
+                Collaborate in Squads
               </Button>
             </Link>
           </div>
         </motion.div>
 
-        {/* Feature Grid */}
+        {/* Feature Grid with Hover Glow */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 mt-16 sm:mt-24 max-w-6xl mx-auto px-2 pb-16 sm:pb-24"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mt-24 max-w-6xl mx-auto px-4 pb-20 w-full"
         >
           <FeatureCard 
-            icon={<Target className="w-5 h-5 text-primary" />}
+            icon={<Target className="w-6 h-6 text-indigo-400" />}
             title="Adaptive Roadmaps"
-            description="ARIS maps chapters to your knowledge level, generating an interactive schedule built for active recall."
+            description="Our advanced AI maps chapters to your experience level, building a custom path with sequential milestones."
           />
           <FeatureCard 
-            icon={<Zap className="w-5 h-5 text-primary" />}
+            icon={<Zap className="w-6 h-6 text-amber-400" />}
             title="Interactive Arena"
-            description="Study sections are parsed into visual blocks. Tap any paragraph to ask AI or trigger interactive visualizers."
+            description="Study modules load as dynamic text. Trigger interactive visualizers or consult the AI tutor in real-time."
           />
           <FeatureCard 
-            icon={<Award className="w-5 h-5 text-primary" />}
-            title="Playful Progression"
-            description="Earn XP, climb squad leaderboards, maintain study streaks, and unlock achievements for keeping consistent."
+            icon={<Award className="w-6 h-6 text-cyan-400" />}
+            title="Squad Progression"
+            description="Earn XP, maintain daily check-in streaks, compete on global leaderboards, and conduct tests in squad portals."
           />
         </motion.div>
       </main>
@@ -119,12 +134,13 @@ export default function LandingPage() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <div className="p-8 rounded-lg bg-card border border-border hover:border-primary/50 shadow-sm transition-all duration-300 text-left hover:translate-y-[-2px] group">
-      <div className="mb-5 p-3 bg-primary/5 border border-primary/20 rounded-lg inline-block group-hover:scale-105 transition-transform duration-300">
+    <div className="p-8 rounded-2xl bg-slate-900/20 border border-slate-800/60 hover:border-indigo-500/20 shadow-xl transition-all duration-300 text-left hover:translate-y-[-4px] group relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      <div className="mb-6 p-3.5 bg-slate-900 border border-slate-800 rounded-xl inline-block group-hover:scale-105 transition-transform duration-300 group-hover:border-indigo-500/30">
         {icon}
       </div>
-      <h3 className="text-md font-bold mb-3 text-foreground group-hover:text-primary transition-colors">{title}</h3>
-      <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
+      <h3 className="text-lg font-bold mb-3 text-slate-100 group-hover:text-indigo-300 transition-colors">{title}</h3>
+      <p className="text-slate-400 text-xs leading-relaxed">{description}</p>
     </div>
   );
 }

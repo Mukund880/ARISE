@@ -62,9 +62,10 @@ export class AIService {
 
   constructor() {
     this.llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       apiKey: process.env.GEMINI_API_KEY,
       temperature: 0.7,
+      maxRetries: 0,
     });
 
     this.embeddings = new GoogleGenerativeAIEmbeddings({
@@ -140,7 +141,14 @@ export class AIService {
     Format the output strictly as a valid JSON array of module objects. Do not include markdown codeblocks (like \`\`\`json) or any other text, just the raw JSON array.
     `;
 
-    const modelList = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+    const modelList = [
+      "gemini-2.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-pro-latest"
+    ];
     let lastError;
 
     for (const modelName of modelList) {
@@ -149,6 +157,7 @@ export class AIService {
           model: modelName,
           apiKey: process.env.GEMINI_API_KEY,
           temperature: 0.7,
+          maxRetries: 0,
         });
         const response = await chatModel.invoke(prompt);
         const text = response.content.toString();
@@ -210,7 +219,14 @@ export class AIService {
 
     const prompt = promptOverride || defaultPrompt;
 
-    const modelList = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+    const modelList = [
+      "gemini-2.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-pro-latest"
+    ];
     let lastError;
 
     for (const modelName of modelList) {
@@ -219,6 +235,7 @@ export class AIService {
           model: modelName,
           apiKey: process.env.GEMINI_API_KEY,
           temperature: 0.7,
+          maxRetries: 0,
         });
         const response = await chatModel.invoke(prompt);
         const text = response.content.toString();

@@ -20,10 +20,118 @@ export default function DashboardPage() {
   const { triggerEmotion } = useMascot();
   const firstName = user?.displayName?.split(" ")[0] || "Scholar";
 
+  // ARIS dynamic tips state
+  const [dailyTip, setDailyTip] = useState("");
+
+  // Daily Challenge states
+  const [dailyTaskCompleted, setDailyTaskCompleted] = useState(false);
+  const [dailyQuestionIdx, setDailyQuestionIdx] = useState(0);
+  const [dailyTaskFeedback, setDailyTaskFeedback] = useState<{ status: "correct" | "incorrect" | "idle", text: string }>({ status: "idle", text: "" });
+  const [selectedDailyOption, setSelectedDailyOption] = useState<number | null>(null);
+
+  const DAILY_QUESTIONS = [
+    {
+      q: "What is the time complexity of searching a value in a balanced Binary Search Tree (BST)?",
+      options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      correctIdx: 1,
+      hint: "Think about how we divide the search space by half at each node."
+    },
+    {
+      q: "Which of the following data structures operates on a Last In First Out (LIFO) basis?",
+      options: ["Queue", "Stack", "Linked List", "Binary Tree"],
+      correctIdx: 1,
+      hint: "Think about a stack of plates: you add to the top and remove from the top."
+    },
+    {
+      q: "In HTTP protocols, what does a status code in the 400 range represent?",
+      options: ["Successful request", "Server error", "Client error", "Redirection"],
+      correctIdx: 2,
+      hint: "Think about 404 Not Found or 400 Bad Request."
+    },
+    {
+      q: "What is the purpose of an index in a relational database?",
+      options: ["To encrypt database content", "To speed up data retrieval operations", "To establish foreign keys", "To compress the tables"],
+      correctIdx: 1,
+      hint: "Indexes help find matching records without scanning the entire table."
+    },
+    {
+      q: "Which protocol is primarily used to securely transfer files over a network?",
+      options: ["HTTP", "SFTP", "SMTP", "UDP"],
+      correctIdx: 1,
+      hint: "Look for the file transfer protocol with security ('S')."
+    }
+  ];
+
   useEffect(() => {
     // Wave greeting on dashboard load
     triggerEmotion("wave", 2500);
+
+    // Pick random ARIS tip
+    const tips = [
+      "Studying is all about consistency, not cramming. Choose a roadmap below, learn just one bite-sized module, and claim your rewards!",
+      "XP multipliers are active! Complete a quiz with 100% accuracy to earn bonus experience points and level up faster.",
+      "Did you know? Reviewing a module's core concepts within 24 hours of first reading it improves retention by up to 80%!",
+      "Take advantage of the Reference Library! Upload slides, notes, or research papers in your squad to study exactly what you need.",
+      "Feeling stuck? Use the ARIS AI Chat Companion on any module page. I can break down complex ideas into simple analogies!",
+      "Maintain your learning streak! Log in daily, complete a quick check-in task, and watch your rank soar from Rookie to Master.",
+      "Learning in a Squad boosts motivation! Check out the Squads tab to collaborate with classmates and share study resources.",
+      "Need to test your limits? Unlock the Grand Test at the end of any syllabus roadmap to prove your mastery of the subject.",
+      "A good study session is followed by a short break. Try the Pomodoro method: study for 25 minutes, then rest for 5 minutes!",
+      "ARIS says: Focus on understanding, not just passing. Try summarizing a module in your own words before taking the quiz!"
+    ];
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+    setDailyTip(randomTip);
+
+    // Establish daily task question index based on date
+    const idx = new Date().getDate() % DAILY_QUESTIONS.length;
+    setDailyQuestionIdx(idx);
   }, []);
+
+  useEffect(() => {
+    if (userProfile) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      setDailyTaskCompleted(userProfile.dailyTaskLastCompleted === todayStr);
+    }
+  }, [userProfile]);
+
+  const handleAnswerDailyTask = async (selectedIdx: number) => {
+    if (!user || !userProfile || dailyTaskCompleted) return;
+
+    const question = DAILY_QUESTIONS[dailyQuestionIdx];
+    if (selectedIdx === question.correctIdx) {
+      setDailyTaskFeedback({ status: "correct", text: "Great job! 50 XP earned and streak updated!" });
+      setDailyTaskCompleted(true);
+      triggerEmotion("excited", 3500);
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+      let newStreak = Number(userProfile.streak) || 1;
+      if (userProfile.dailyTaskLastCompleted === yesterdayStr) {
+        newStreak += 1;
+      } else if (userProfile.dailyTaskLastCompleted !== todayStr) {
+        newStreak = 1;
+      }
+
+      try {
+        const { updateDoc, doc, increment } = await import("firebase/firestore");
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+          xp: increment(50),
+          streak: newStreak,
+          dailyTaskLastCompleted: todayStr,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Error updating daily task stats:", err);
+      }
+    } else {
+      setDailyTaskFeedback({ status: "incorrect", text: "That is incorrect. Review your choice and try again!" });
+      triggerEmotion("thinking", 2000);
+    }
+  };
 
   const [topics, setTopics] = useState<any[]>([]);
   const [loadingTopics, setLoadingTopics] = useState(true);
@@ -168,7 +276,7 @@ export default function DashboardPage() {
         </div>
         <div className="text-xs text-muted-foreground leading-relaxed">
           <strong className="text-foreground font-mono uppercase tracking-widest text-[9px] font-bold block mb-0.5">ARIS's Daily Tip</strong>
-          "Studying is all about consistency, not cramming. Choose a roadmap below, learn just one bite-sized module, and claim your rewards!"
+          {dailyTip || "Studying is all about consistency, not cramming. Choose a roadmap below, learn just one bite-sized module, and claim your rewards!"}
         </div>
       </motion.div>
 
@@ -194,7 +302,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-1">
                 <h3 className="text-md font-bold text-foreground">No Learning Roadmaps Yet</h3>
-                <p className="text-muted-foreground text-xs max-w-sm mx-auto">Generate a personalized syllabus powered by Google Gemini to start learning and earning badges.</p>
+                <p className="text-muted-foreground text-xs max-w-sm mx-auto">Generate a personalized syllabus powered by advanced AI to start learning and earning badges.</p>
               </div>
               <Link href="/dashboard/new-topic">
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/95 border border-primary/80 rounded-md px-6 font-mono text-xs uppercase tracking-wider">
@@ -255,8 +363,64 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right Column: Stats Only */}
+        {/* Right Column: Stats & Challenges */}
         <div className="space-y-8">
+          
+          {/* Daily Task Card */}
+          <Card className="p-6 border-border bg-card rounded-lg shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-border/55 pb-3">
+              <h3 className="text-xs font-mono uppercase tracking-widest text-primary font-bold flex items-center gap-1.5">
+                <Flame className="w-4 h-4 text-amber-500 fill-amber-500/25" /> ARIS Daily Challenge
+              </h3>
+              {dailyTaskCompleted && (
+                <span className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded">
+                  Completed
+                </span>
+              )}
+            </div>
+
+            {dailyTaskCompleted ? (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-sm font-bold text-foreground">Awesome! You've locked in your streak today.</p>
+                <p className="text-xs text-muted-foreground">Come back tomorrow for a new ARIS challenge! Streak: {userProfile?.streak || 1} Days 🔥</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs font-bold text-foreground leading-relaxed">{DAILY_QUESTIONS[dailyQuestionIdx]?.q}</p>
+                <div className="space-y-2">
+                  {DAILY_QUESTIONS[dailyQuestionIdx]?.options.map((opt, oIdx) => (
+                    <button
+                      key={oIdx}
+                      type="button"
+                      onClick={() => setSelectedDailyOption(oIdx)}
+                      className={`w-full text-left p-3 text-xs rounded-lg border transition-all ${
+                        selectedDailyOption === oIdx
+                          ? "border-primary bg-primary/5 text-primary font-semibold"
+                          : "border-border/60 hover:border-primary/50 text-foreground"
+                      }`}
+                    >
+                      {String.fromCharCode(65 + oIdx)}. {opt}
+                    </button>
+                  ))}
+                </div>
+
+                {dailyTaskFeedback.status !== "idle" && (
+                  <p className={`text-[11px] font-bold ${dailyTaskFeedback.status === "correct" ? "text-emerald-500" : "text-destructive"}`}>
+                    {dailyTaskFeedback.text}
+                  </p>
+                )}
+
+                <Button
+                  onClick={() => handleAnswerDailyTask(selectedDailyOption ?? -1)}
+                  disabled={selectedDailyOption === null}
+                  className="w-full h-10 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest disabled:opacity-50"
+                >
+                  Submit Answer
+                </Button>
+              </div>
+            )}
+          </Card>
+
           <h2 className="text-lg font-bold tracking-wider text-foreground uppercase flex items-center gap-2">
             <Trophy className="w-5 h-5 text-primary" />
             Your Stats

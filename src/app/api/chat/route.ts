@@ -11,9 +11,10 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
   apiKey: process.env.GEMINI_API_KEY,
 });
 const llm = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash-lite",
   apiKey: process.env.GEMINI_API_KEY,
   temperature: 0.5,
+  maxRetries: 0,
 });
 
 export async function POST(req: Request) {
@@ -71,7 +72,14 @@ export async function POST(req: Request) {
     
     messages.push(new HumanMessage(message));
 
-    const modelList = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+    const modelList = [
+      "gemini-2.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-pro-latest"
+    ];
     let lastError;
     let res;
 
@@ -81,6 +89,7 @@ export async function POST(req: Request) {
           model: modelName,
           apiKey: process.env.GEMINI_API_KEY,
           temperature: 0.5,
+          maxRetries: 0,
         });
         res = await chatModel.invoke(messages);
         break;

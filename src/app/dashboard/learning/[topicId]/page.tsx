@@ -769,15 +769,15 @@ export default function AdaptiveLearningPage() {
               <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#FAF9F6] border border-slate-200/50">
                 <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 font-black text-[10px]">AI</div>
                 <div className="text-[11px] leading-tight">
-                  <p className="font-bold text-slate-700">Gemini-1.5-Pro</p>
+                  <p className="font-bold text-slate-700">ARIS AI Engine</p>
                   <p className="text-slate-500 mt-0.5">Syllabus & Material Generator</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#FAF9F6] border border-slate-200/50">
-                <div className="w-8 h-8 rounded-lg bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600 font-black text-[10px]">RAG</div>
+                <div className="w-8 h-8 rounded-lg bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600 font-black text-[10px]">DOCS</div>
                 <div className="text-[11px] leading-tight">
-                  <p className="font-bold text-slate-700">Vector Ingestion Store</p>
-                  <p className="text-slate-500 mt-0.5">Reference Source Indexer</p>
+                  <p className="font-bold text-slate-700">Reference Library</p>
+                  <p className="text-slate-500 mt-0.5">Uploaded Source Indexer</p>
                 </div>
               </div>
             </div>

@@ -25,9 +25,10 @@ export class ContentIngestionService {
     });
 
     this.llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       apiKey: process.env.GEMINI_API_KEY,
       temperature: 0.1, // Low temp for OCR
+      maxRetries: 0,
     });
   }
 
@@ -49,7 +50,14 @@ export class ContentIngestionService {
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
           ]
         });
-        const modelList = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+        const modelList = [
+          "gemini-2.5-flash-lite",
+          "gemini-3.5-flash",
+          "gemini-flash-latest",
+          "gemini-2.5-flash",
+          "gemini-2.0-flash",
+          "gemini-pro-latest"
+        ];
         let lastError;
         let res;
 
@@ -59,6 +67,7 @@ export class ContentIngestionService {
               model: modelName,
               apiKey: process.env.GEMINI_API_KEY,
               temperature: 0.1, // Low temp for OCR
+              maxRetries: 0,
             });
             res = await chatModel.invoke([msg]);
             break;

@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   ArrowLeft, Users, FileText, CheckSquare, Brain, Plus, Trash2, Calendar, 
   Upload, Download, Award, Clock, Target, Eye, X, BookOpen, AlertCircle,
-  Paperclip, ExternalLink, Send, MessageSquare, Loader2
+  Paperclip, ExternalLink, Send, MessageSquare, Loader2, Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { db, storage } from "@/lib/firebase";
@@ -73,6 +73,7 @@ export default function TeacherSquadConsole() {
 
   // Selected Student sub-tab state
   const [selectedStudentTab, setSelectedStudentTab] = useState<"analytics" | "submissions" | "chat">("analytics");
+  const [isExpandedStudentView, setIsExpandedStudentView] = useState(false);
 
   // Teacher direct messages with selected student
   const [teacherChatMessages, setTeacherChatMessages] = useState<any[]>([]);
@@ -109,6 +110,13 @@ export default function TeacherSquadConsole() {
     correctOptionIndex: number;
   }>>([{ question: "", options: ["", "", "", ""], correctOptionIndex: 0 }]);
   const [creatingTest, setCreatingTest] = useState(false);
+
+  // AI Test Generation state
+  const [testCreationMode, setTestCreationMode] = useState<"manual" | "ai">("manual");
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiDifficulty, setAiDifficulty] = useState("Intermediate");
+  const [aiNumQuestions, setAiNumQuestions] = useState(5);
+  const [generatingAiTest, setGeneratingAiTest] = useState(false);
 
   // 1. Fetch Squad and Members details (Real-time listener)
   useEffect(() => {
@@ -424,6 +432,55 @@ export default function TeacherSquadConsole() {
     }
   };
 
+  const handleGenerateAndPublishAiTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testTitle.trim() || !aiTopic.trim()) return;
+
+    setGeneratingAiTest(true);
+    try {
+      const res = await fetch("/api/generate-classroom-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: aiTopic,
+          difficulty: aiDifficulty,
+          numQuestions: aiNumQuestions
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate AI test");
+      }
+      const data = await res.json();
+
+      // Publish directly to Firestore
+      await addDoc(collection(db, "squads", squadId, "tests"), {
+        title: testTitle,
+        xpReward: Number(testXp) || (aiNumQuestions * 30),
+        questions: data.questions,
+        createdAt: new Date().toISOString()
+      });
+
+      // Notify squad members
+      await NotificationService.notifySquadMembers(
+        squadId,
+        "New Practice Test Conducted",
+        `A new AI-generated understanding test: "${testTitle}" is now available in ${squad.name}.`
+      );
+
+      alert("AI Class test generated and published successfully!");
+      setTestTitle("");
+      setAiTopic("");
+      setTestXp(150);
+      setTestCreationMode("manual");
+    } catch (err) {
+      console.error(err);
+      alert("Error generating AI test.");
+    } finally {
+      setGeneratingAiTest(false);
+    }
+  };
+
   // 10. Delete Test
   const handleDeleteTest = (testId: string) => {
     showConfirm(
@@ -453,10 +510,12 @@ export default function TeacherSquadConsole() {
     if (!squadId || !selectedStudent || selectedStudentTab !== "chat") return;
 
     const chatsRef = collection(db, "squads", squadId, "chats");
-    const q = query(chatsRef, where("studentId", "==", selectedStudent.id), orderBy("createdAt", "asc"));
+    const q = query(chatsRef, where("studentId", "==", selectedStudent.id));
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      setTeacherChatMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const msgs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      msgs.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      setTeacherChatMessages(msgs);
       setTimeout(() => teacherChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     });
 
@@ -710,9 +769,17 @@ export default function TeacherSquadConsole() {
                         <h3 className="font-extrabold text-sm text-foreground">{selectedStudent.displayName}</h3>
                         <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{selectedStudent.email}</p>
                       </div>
-                      <button onClick={() => setSelectedStudent(null)} className="text-muted-foreground hover:text-foreground">
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-2.5">
+                        <button 
+                          onClick={() => setIsExpandedStudentView(true)} 
+                          className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider border border-border/60 hover:border-primary/50 px-2 py-1 rounded cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Expand
+                        </button>
+                        <button onClick={() => setSelectedStudent(null)} className="text-muted-foreground hover:text-foreground mt-1 cursor-pointer">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Stats details */}
@@ -1233,9 +1300,140 @@ export default function TeacherSquadConsole() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             {/* Create Test Form (Test Builder) */}
             <Card className="lg:col-span-2 p-6 border-border bg-card rounded-lg shadow-sm h-fit">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-primary font-bold mb-6">Class Test Creator</h3>
-              <form onSubmit={handleCreateTest} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+              <h3 className="text-xs font-mono uppercase tracking-widest text-primary font-bold mb-4">Class Test Creator</h3>
+              
+              {/* Toggles */}
+              <div className="flex bg-secondary/40 p-1 rounded-lg mb-6 border border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setTestCreationMode("manual")}
+                  className={`flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wider rounded-md transition-all ${
+                    testCreationMode === "manual"
+                      ? "bg-card text-primary font-bold shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Manual Builder
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTestCreationMode("ai")}
+                  className={`flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wider rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                    testCreationMode === "ai"
+                      ? "bg-card text-primary font-bold shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500/25" /> AI Generator
+                </button>
+              </div>
+
+              {testCreationMode === "manual" ? (
+                <form onSubmit={handleCreateTest} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">Test Title</label>
+                      <Input 
+                        required 
+                        value={testTitle} 
+                        onChange={e => setTestTitle(e.target.value)} 
+                        placeholder="e.g. Chapter 1 Quiz"
+                        className="bg-secondary/20 border-border text-xs rounded-md h-10"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">XP Reward</label>
+                      <Input 
+                        type="number" 
+                        required 
+                        value={testXp} 
+                        onChange={e => setTestXp(Number(e.target.value))} 
+                        className="bg-secondary/20 border-border text-xs rounded-md h-10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Questions list editor */}
+                  <div className="space-y-6 border-t border-border/40 pt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-muted-foreground">Questions ({testQuestions.length})</span>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleAddQuestion}
+                        className="h-8 border-primary/30 text-primary hover:bg-primary/5 text-[10px] font-mono uppercase tracking-wider"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                      </Button>
+                    </div>
+
+                    <div className="space-y-6 divide-y divide-border/40 max-h-[360px] overflow-y-auto pr-1">
+                      {testQuestions.map((q, qIdx) => (
+                        <div key={qIdx} className={`space-y-3 ${qIdx > 0 ? 'pt-5' : ''}`}>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-mono font-bold text-primary">QUESTION {qIdx + 1}</span>
+                            {testQuestions.length > 1 && (
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveQuestion(qIdx)}
+                                className="text-[9px] text-destructive hover:underline font-mono uppercase"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+
+                          <Input 
+                            required 
+                            value={q.question} 
+                            onChange={e => handleUpdateQuestionText(qIdx, e.target.value)} 
+                            placeholder="Enter quiz question prompt..."
+                            className="bg-secondary/20 border-border text-xs rounded-md h-9"
+                          />
+
+                          {/* Options grid */}
+                          <div className="grid grid-cols-2 gap-2">
+                            {q.options.map((opt, oIdx) => (
+                              <Input 
+                                key={oIdx}
+                                required 
+                                value={opt} 
+                                onChange={e => handleUpdateOption(qIdx, oIdx, e.target.value)} 
+                                placeholder={`Option ${String.fromCharCode(65 + oIdx)}`}
+                                className="bg-secondary/10 border-border/70 text-[11px] rounded-md h-8"
+                              />
+                            ))}
+                          </div>
+
+                          <div className="space-y-1 pt-1">
+                            <label className="text-[8px] font-mono tracking-wider uppercase text-muted-foreground">Correct Option</label>
+                            <select
+                              value={q.correctOptionIndex}
+                              onChange={e => handleUpdateCorrectIndex(qIdx, e.target.value)}
+                              className="w-full bg-secondary/20 border border-border rounded-md px-2.5 py-1.5 text-[11px] focus:outline-none cursor-pointer"
+                            >
+                              <option value={0}>Option A</option>
+                              <option value={1}>Option B</option>
+                              <option value={2}>Option C</option>
+                              <option value={3}>Option D</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    disabled={creatingTest || !testTitle.trim() || testQuestions.some(q => !q.question.trim())} 
+                    className="w-full h-11 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {creatingTest ? "Conducting test..." : "Publish Test"}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleGenerateAndPublishAiTest} className="space-y-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">Test Title</label>
                     <Input 
@@ -1246,97 +1444,73 @@ export default function TeacherSquadConsole() {
                       className="bg-secondary/20 border-border text-xs rounded-md h-10"
                     />
                   </div>
+
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">XP Reward</label>
+                    <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">Topic of the Test</label>
                     <Input 
-                      type="number" 
                       required 
-                      value={testXp} 
-                      onChange={e => setTestXp(Number(e.target.value))} 
+                      value={aiTopic} 
+                      onChange={e => setAiTopic(e.target.value)} 
+                      placeholder="e.g. Binary Search Trees or CPU Scheduling"
                       className="bg-secondary/20 border-border text-xs rounded-md h-10"
                     />
                   </div>
-                </div>
 
-                {/* Questions list editor */}
-                <div className="space-y-6 border-t border-border/40 pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-muted-foreground">Questions ({testQuestions.length})</span>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleAddQuestion}
-                      className="h-8 border-primary/30 text-primary hover:bg-primary/5 text-[10px] font-mono uppercase tracking-wider"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Add
-                    </Button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">Test Difficulty</label>
+                      <select
+                        value={aiDifficulty}
+                        onChange={e => setAiDifficulty(e.target.value)}
+                        className="w-full h-10 bg-secondary/20 border border-border/85 rounded-md px-3 text-xs focus:outline-none cursor-pointer"
+                      >
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">Number of Questions</label>
+                      <select
+                        value={aiNumQuestions}
+                        onChange={e => setAiNumQuestions(Number(e.target.value))}
+                        className="w-full h-10 bg-secondary/20 border border-border/85 rounded-md px-3 text-xs focus:outline-none cursor-pointer"
+                      >
+                        <option value={3}>3 Questions</option>
+                        <option value={5}>5 Questions</option>
+                        <option value={10}>10 Questions</option>
+                        <option value={15}>15 Questions</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="space-y-6 divide-y divide-border/40 max-h-[360px] overflow-y-auto pr-1">
-                    {testQuestions.map((q, qIdx) => (
-                      <div key={qIdx} className={`space-y-3 ${qIdx > 0 ? 'pt-5' : ''}`}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-mono font-bold text-primary">QUESTION {qIdx + 1}</span>
-                          {testQuestions.length > 1 && (
-                            <button 
-                              type="button" 
-                              onClick={() => handleRemoveQuestion(qIdx)}
-                              className="text-[9px] text-destructive hover:underline font-mono uppercase"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-
-                        <Input 
-                          required 
-                          value={q.question} 
-                          onChange={e => handleUpdateQuestionText(qIdx, e.target.value)} 
-                          placeholder="Enter quiz question prompt..."
-                          className="bg-secondary/20 border-border text-xs rounded-md h-9"
-                        />
-
-                        {/* Options grid */}
-                        <div className="grid grid-cols-2 gap-2">
-                          {q.options.map((opt, oIdx) => (
-                            <Input 
-                              key={oIdx}
-                              required 
-                              value={opt} 
-                              onChange={e => handleUpdateOption(qIdx, oIdx, e.target.value)} 
-                              placeholder={`Option ${String.fromCharCode(65 + oIdx)}`}
-                              className="bg-secondary/10 border-border/70 text-[11px] rounded-md h-8"
-                            />
-                          ))}
-                        </div>
-
-                        <div className="space-y-1 pt-1">
-                          <label className="text-[8px] font-mono tracking-wider uppercase text-muted-foreground">Correct Option</label>
-                          <select
-                            value={q.correctOptionIndex}
-                            onChange={e => handleUpdateCorrectIndex(qIdx, e.target.value)}
-                            className="w-full bg-secondary/20 border border-border rounded-md px-2.5 py-1.5 text-[11px] focus:outline-none cursor-pointer"
-                          >
-                            <option value={0}>Option A</option>
-                            <option value={1}>Option B</option>
-                            <option value={2}>Option C</option>
-                            <option value={3}>Option D</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground">XP Reward (Calculated)</label>
+                    <Input 
+                      type="number"
+                      value={testXp || (aiNumQuestions * 30)}
+                      onChange={e => setTestXp(Number(e.target.value))}
+                      className="bg-secondary/20 border-border text-xs rounded-md h-10"
+                    />
                   </div>
-                </div>
 
-                <Button 
-                  type="submit" 
-                  disabled={creatingTest || !testTitle.trim() || testQuestions.some(q => !q.question.trim())} 
-                  className="w-full h-11 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest disabled:opacity-50"
-                >
-                  {creatingTest ? "Conducting test..." : "Publish Test"}
-                </Button>
-              </form>
+                  <Button 
+                    type="submit" 
+                    disabled={generatingAiTest || !testTitle.trim() || !aiTopic.trim()} 
+                    className="w-full h-11 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {generatingAiTest ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" /> Generating Test...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300/25" /> Generate & Publish Test
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
             </Card>
 
             {/* List of Published Tests */}
@@ -1382,6 +1556,263 @@ export default function TeacherSquadConsole() {
         )}
 
       </div>
+
+      {isExpandedStudentView && selectedStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-card border border-border rounded-xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden relative shadow-2xl"
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b border-border bg-secondary/15 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm font-heading shrink-0">
+                  {selectedStudent.displayName.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-foreground leading-tight">{selectedStudent.displayName}</h3>
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5">{selectedStudent.email}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsExpandedStudentView(false)} 
+                className="p-1.5 hover:bg-secondary/20 rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left panel: Stats Summary & Tests */}
+              <div className="w-1/3 border-r border-border p-6 overflow-y-auto space-y-6 bg-secondary/5">
+                <h4 className="text-xs font-mono font-bold text-primary uppercase tracking-widest border-l-2 border-primary pl-2">Squad Specific Analytics</h4>
+                
+                {(() => {
+                  const stats = analytics[selectedStudent.id] || {
+                    xpEarned: 0,
+                    studyTime: 0,
+                    assignmentsCompleted: 0,
+                    testsTaken: 0,
+                    quizAccuracy: 0,
+                    totalQuestionsAttempted: 0,
+                    totalQuestionsCorrect: 0,
+                    submissions: [],
+                    testScores: []
+                  };
+                  return (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-card border border-border rounded-xl shadow-inner">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">XP Earned</span>
+                          <p className="text-lg font-black text-primary font-mono mt-1">{stats.xpEarned || 0} XP</p>
+                        </div>
+                        <div className="p-4 bg-card border border-border rounded-xl shadow-inner">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Study Time</span>
+                          <p className="text-lg font-black text-primary font-mono mt-1">{stats.studyTime || 0} Mins</p>
+                        </div>
+                        <div className="p-4 bg-card border border-border rounded-xl shadow-inner">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Assignments</span>
+                          <p className="text-lg font-black text-primary font-mono mt-1">{stats.assignmentsCompleted || 0} Done</p>
+                        </div>
+                        <div className="p-4 bg-card border border-border rounded-xl shadow-inner">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Quiz Accuracy</span>
+                          <p className="text-lg font-black text-primary font-mono mt-1">{stats.quizAccuracy || 0}%</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h5 className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider">Test Records ({stats.testScores?.length || 0})</h5>
+                        {stats.testScores && stats.testScores.length > 0 ? (
+                          <div className="space-y-2">
+                            {stats.testScores.map((score: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center p-3 rounded-lg bg-card border border-border text-xs">
+                                <div>
+                                  <p className="font-bold text-foreground truncate max-w-[150px]">{score.testId}</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{new Date(score.takenAt).toLocaleDateString()}</p>
+                                </div>
+                                <span className="font-mono font-bold text-primary">{score.score} / {score.total}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground font-mono uppercase text-center py-4">No test scores recorded.</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Right panel: Submissions & Work */}
+              <div className="w-2/3 flex flex-col overflow-hidden">
+                {/* Internal tabs for the expanded panel */}
+                <div className="flex gap-4 p-4 border-b border-border shrink-0">
+                  <button 
+                    onClick={() => setSelectedStudentTab("submissions")}
+                    className={`text-xs font-mono uppercase tracking-wider pb-2 border-b-2 transition-all cursor-pointer ${
+                      selectedStudentTab === "submissions"
+                        ? "border-primary text-primary font-bold"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Student Work & Submissions ({analytics[selectedStudent.id]?.submissions?.length || 0})
+                  </button>
+                  <button 
+                    onClick={() => setSelectedStudentTab("chat")}
+                    className={`text-xs font-mono uppercase tracking-wider pb-2 border-b-2 transition-all cursor-pointer ${
+                      selectedStudentTab === "chat"
+                        ? "border-primary text-primary font-bold"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Direct Messaging & Chat
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                  {selectedStudentTab === "submissions" && (
+                    <div className="space-y-6">
+                      {(() => {
+                        const stats = analytics[selectedStudent.id] || { submissions: [] };
+                        if (!stats.submissions || stats.submissions.length === 0) {
+                          return (
+                            <div className="p-16 text-center text-xs font-mono text-muted-foreground uppercase tracking-widest border border-border border-dashed rounded-xl">
+                              No submissions uploaded yet.
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="space-y-6">
+                            {stats.submissions.map((sub: any) => (
+                              <div key={sub.assignmentId} className="p-5 rounded-xl border border-border bg-card space-y-4 shadow-sm">
+                                <div className="flex justify-between items-start border-b border-border/40 pb-3">
+                                  <div>
+                                    <span className="text-[9px] font-mono font-bold text-primary uppercase tracking-widest">ASSIGNMENT ID</span>
+                                    <h5 className="font-bold text-sm text-foreground truncate mt-0.5">{sub.assignmentId}</h5>
+                                  </div>
+                                  <span className={`text-[10px] font-mono uppercase tracking-wider font-bold px-2 py-0.5 rounded ${
+                                    sub.status === "accepted" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                                    sub.status === "rejected" ? "bg-destructive/10 text-destructive border border-destructive/20" :
+                                    "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                                  }`}>
+                                    {sub.status || "pending"}
+                                  </span>
+                                </div>
+
+                                <div className="text-xs space-y-2">
+                                  <p className="text-muted-foreground font-mono text-[10px] uppercase">SUBMISSION TEXT</p>
+                                  <p className="p-3 bg-secondary/20 rounded-lg text-foreground font-medium leading-relaxed max-h-[150px] overflow-y-auto">{sub.text}</p>
+                                </div>
+
+                                {sub.attachments && sub.attachments.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-muted-foreground font-mono text-[10px] uppercase">ATTACHMENTS ({sub.attachments.length})</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {sub.attachments.map((file: any, fIdx: number) => (
+                                        <a 
+                                          key={fIdx} 
+                                          href={file.url} 
+                                          target="_blank" 
+                                          rel="noreferrer" 
+                                          className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary/15 border border-border text-[10px] font-mono text-primary hover:bg-secondary/30 transition-all"
+                                        >
+                                          <Download className="w-3 h-3" /> {file.name}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {sub.status === "pending" && (
+                                  <div className="flex gap-3 pt-2">
+                                    <Button 
+                                      onClick={() => handleReviewSubmission(selectedStudent.id, sub.assignmentId, "accept")}
+                                      className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-xs uppercase tracking-wider rounded-md"
+                                    >
+                                      Accept Submission
+                                    </Button>
+                                    <Button 
+                                      variant="outline"
+                                      onClick={() => handleReviewSubmission(selectedStudent.id, sub.assignmentId, "reject")}
+                                      className="h-9 border-destructive text-destructive hover:bg-destructive/5 font-mono text-xs uppercase tracking-wider rounded-md"
+                                    >
+                                      Reject
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {sub.feedback && (
+                                  <div className="p-3 rounded-lg bg-secondary/10 border border-border/50 text-xs">
+                                    <p className="font-bold text-foreground">Feedback provided:</p>
+                                    <p className="text-muted-foreground mt-1 leading-relaxed">{sub.feedback}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {selectedStudentTab === "chat" && (
+                    <div className="h-[55vh] flex flex-col">
+                      <div className="flex-1 overflow-y-auto space-y-4 border border-border/60 rounded-xl p-4 bg-secondary/10 mb-4 pr-2">
+                        {teacherChatMessages.length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-center text-xs font-mono text-muted-foreground uppercase tracking-widest leading-loose">
+                            No messages exchanged yet. <br />
+                            Send a message to start the discussion!
+                          </div>
+                        ) : (
+                          teacherChatMessages.map((msg: any) => {
+                            const isMe = msg.senderId === user?.uid;
+                            return (
+                              <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                <div className={`p-3 rounded-2xl max-w-[80%] text-xs leading-relaxed ${
+                                  isMe 
+                                    ? 'bg-primary text-primary-foreground rounded-tr-none shadow-sm' 
+                                    : 'bg-card border border-border text-foreground rounded-tl-none shadow-sm'
+                                }`}>
+                                  {!isMe && <span className="font-extrabold block text-[9px] uppercase tracking-wider text-primary mb-1">{msg.senderName}</span>}
+                                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                                </div>
+                                <span className="text-[8px] font-mono text-muted-foreground mt-1 uppercase tracking-widest">
+                                  {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                        <div ref={teacherChatEndRef} />
+                      </div>
+
+                      <form onSubmit={handleSendTeacherChat} className="flex gap-2 shrink-0">
+                        <Input 
+                          value={teacherChatText} 
+                          onChange={e => setTeacherChatText(e.target.value)} 
+                          placeholder={`Message ${selectedStudent.displayName}...`}
+                          className="bg-card border-border text-xs rounded-xl h-12 shadow-sm focus-visible:ring-primary focus-visible:border-primary"
+                        />
+                        <Button 
+                          type="submit" 
+                          disabled={sendingTeacherChat || !teacherChatText.trim()}
+                          className="h-12 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest px-6 rounded-xl shadow-sm disabled:opacity-50 shrink-0"
+                        >
+                          Send
+                        </Button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -194,10 +194,12 @@ export default function StudentSquadPortal() {
     if (!squadId || !user || activeTab !== "chat") return;
 
     const chatsRef = collection(db, "squads", squadId, "chats");
-    const q = query(chatsRef, where("studentId", "==", user.uid), orderBy("createdAt", "asc"));
+    const q = query(chatsRef, where("studentId", "==", user.uid));
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      setChatMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const msgs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      msgs.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      setChatMessages(msgs);
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     });
 

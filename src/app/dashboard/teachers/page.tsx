@@ -237,7 +237,7 @@ export default function TeachersPage() {
           <div>
             <h3 className="text-xs font-mono uppercase tracking-widest text-primary font-bold">Classroom syllabus generation</h3>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-xl">
-              Construct high-fidelity learning roadmaps using Google Gemini. Upload your textbook or custom curriculum slide decks to automatically populate study sessions for all students in your squad.
+              Construct high-fidelity learning roadmaps using advanced AI. Upload your textbook or custom curriculum slide decks to automatically populate study sessions for all students in your squad.
             </p>
           </div>
         </div>

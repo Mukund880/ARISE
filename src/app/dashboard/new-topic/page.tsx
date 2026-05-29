@@ -93,19 +93,19 @@ export default function NewTopicPage() {
 
     const steps = [
       {
-        status: "Querying Google Knowledge Graph API...",
+        status: "Analyzing core topic concepts...",
         mascot: "searching" as const,
         logs: [
-          "Initiating connection to Google Knowledge Graph...",
+          "Initiating conceptual search...",
           "Validating topic entities and conceptual keywords...",
           "Resolved entity matches. Retrieved 3 semantic descriptors."
         ]
       },
       {
-        status: "Scanning Pinecone Vector Store...",
+        status: "Scanning reference library...",
         mascot: "scanning" as const,
         logs: [
-          "Scanning Pinecone namespace indexes...",
+          "Scanning local namespace indexes...",
           "Searching for uploaded PDF/markdown contextual references...",
           "Merged vector results: 2 context fragments loaded."
         ]
@@ -114,7 +114,7 @@ export default function NewTopicPage() {
         status: "Formulating Adaptive Syllabus...",
         mascot: "thinking" as const,
         logs: [
-          "Connecting to Google Gemini API (gemini-2.5-flash)...",
+          "Connecting to ARIS AI Engine...",
           "Drafting study modules & sequential prerequisites...",
           "Determining duration estimations and learning objectives..."
         ]
@@ -360,9 +360,9 @@ export default function NewTopicPage() {
 
             {/* Playful thought bubble text */}
             <p className="text-xs text-slate-600 leading-relaxed font-bold bg-indigo-50/50 border border-indigo-100/50 rounded-2xl py-3 px-6 max-w-lg shadow-sm">
-              {loaderStep === 0 && '“I am verifying core definitions using Google Knowledge Graph APIs so the curriculum is 100% accurate!”'}
+              {loaderStep === 0 && '“I am verifying core definitions and concept relationships so the curriculum is 100% accurate!”'}
               {loaderStep === 1 && '“Scanning all reference notes and documents uploaded. Tailoring modules to match your resources!”'}
-              {loaderStep === 2 && '“Drafting full chapter outlines, explanations, charts, and quizzes with Gemini. This takes the longest!”'}
+              {loaderStep === 2 && '“Drafting full chapter outlines, explanations, charts, and quizzes with our AI engine. This takes the longest!”'}
               {loaderStep === 3 && '“Distributing XP points across modules and setting up milestone achievements. Get ready for rewards!”'}
               {loaderStep === 4 && '“Formatting everything and building your dashboard links. Get ready to learn!”'}
             </p>
