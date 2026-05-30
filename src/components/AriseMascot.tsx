@@ -152,54 +152,67 @@ export function AriseMascot({
       />
 
       {/* Main Mascot Image View with Organic Float, Sway & Wiggle */}
-      <motion.img
-        src={`/assets/aris/${getImageForState(currentMascotState)}`}
-        alt="Aris Mascot"
-        animate={{
-          // Ultra-smooth float (y-translation) of exactly 1.5px up and down
-          y: isLowEnergy ? [-0.8, 0.8, -0.8] : [-1.5, 1.5, -1.5],
-          // Smooth sway mixed with a periodic wiggle (rotate keyframes)
-          rotate: isLowEnergy 
-            ? [0, -0.6, 0.6, -0.6, 0] 
-            : [0, -1.5, 1.5, -1.5, 0, 0, -3.5, 3.5, -3.5, 3.5, -2, 2, -1, 0, 0, 1.5, -1.5, 0]
-        }}
-        transition={{
-          y: {
-            repeat: Infinity,
-            duration: isLowEnergy ? 5.0 : 4.0,
-            ease: "easeInOut"
-          },
-          rotate: {
-            repeat: Infinity,
-            duration: isLowEnergy ? 10.0 : 12.0,
-            ease: "easeInOut",
-            times: isLowEnergy 
-              ? [0, 0.25, 0.5, 0.75, 1]
-              : [
-                  0, 
-                  1.5 / 12, 
-                  3.0 / 12, 
-                  4.5 / 12, 
-                  6.0 / 12, 
-                  8.0 / 12, 
-                  8.1 / 12, 
-                  8.2 / 12, 
-                  8.3 / 12, 
-                  8.4 / 12, 
-                  8.5 / 12, 
-                  8.6 / 12, 
-                  8.7 / 12, 
-                  8.8 / 12, 
-                  9.2 / 12, 
-                  10.2 / 12, 
-                  11.1 / 12, 
-                  1.0
-                ]
-          }
-        }}
-        className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(197,168,128,0.2)]"
-        style={{ zIndex: 1 }}
-      />
+      {getImageForState(currentMascotState) === "waving.png" ? (
+        <div className="w-full h-full flex items-center justify-center overflow-hidden" style={{ zIndex: 1 }}>
+          <video
+            src="/waving.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-contain"
+          />
+        </div>
+      ) : (
+        <motion.img
+          src={`/assets/aris/${getImageForState(currentMascotState)}`}
+          alt="Aris Mascot"
+          animate={{
+            // Ultra-smooth float (y-translation) of exactly 1.5px up and down
+            y: isLowEnergy ? [-0.8, 0.8, -0.8] : [-1.5, 1.5, -1.5],
+            // Smooth sway mixed with a periodic wiggle (rotate keyframes)
+            rotate: isLowEnergy 
+              ? [0, -0.6, 0.6, -0.6, 0] 
+              : [0, -1.5, 1.5, -1.5, 0, 0, -3.5, 3.5, -3.5, 3.5, -2, 2, -1, 0, 0, 1.5, -1.5, 0]
+          }}
+          transition={{
+            y: {
+              repeat: Infinity,
+              duration: isLowEnergy ? 5.0 : 4.0,
+              ease: "easeInOut"
+            },
+            rotate: {
+              repeat: Infinity,
+              duration: isLowEnergy ? 10.0 : 12.0,
+              ease: "easeInOut",
+              times: isLowEnergy 
+                ? [0, 0.25, 0.5, 0.75, 1]
+                : [
+                    0, 
+                    1.5 / 12, 
+                    3.0 / 12, 
+                    4.5 / 12, 
+                    6.0 / 12, 
+                    8.0 / 12, 
+                    8.1 / 12, 
+                    8.2 / 12, 
+                    8.3 / 12, 
+                    8.4 / 12, 
+                    8.5 / 12, 
+                    8.6 / 12, 
+                    8.7 / 12, 
+                    8.8 / 12, 
+                    9.2 / 12, 
+                    10.2 / 12, 
+                    11.1 / 12, 
+                    1.0
+                  ]
+            }
+          }}
+          className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(197,168,128,0.2)]"
+          style={{ zIndex: 1 }}
+        />
+      )}
 
       {/* Volumetric Floating Base Shadow */}
       <motion.div

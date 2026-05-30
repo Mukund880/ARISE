@@ -242,15 +242,8 @@ export default function DashboardPage() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left mb-6 md:mb-0">
           {/* Active streak mascot companion - showing full body, larger size */}
-          <div className="w-28 h-28 shrink-0 bg-primary/5 rounded-full border border-primary/20 shadow-inner overflow-hidden relative flex items-center justify-center z-10">
-            <video 
-              src="/waving.mp4" 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
-              className="w-full h-full object-cover scale-110"
-            />
+          <div className="w-28 h-28 shrink-0 bg-primary/5 rounded-2xl border border-primary/20 shadow-inner overflow-visible relative flex items-center justify-center z-10 p-2">
+            <AriseMascot size={90} global={true} interactive={true} />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight mb-2 text-foreground font-heading">Welcome back, {firstName}! 👋</h1>
