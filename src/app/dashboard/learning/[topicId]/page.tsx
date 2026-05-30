@@ -700,6 +700,148 @@ export default function AdaptiveLearningPage() {
             )}
           </div>
         </div>
+
+        {/* Collapsible Study Notes Drawer */}
+        <AnimatePresence>
+          {showNotesDrawer && (
+            <>
+              <div 
+                className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs" 
+                onClick={async () => {
+                  if (hasNotesChanged) {
+                    await saveModuleNotes(notesText);
+                    setHasNotesChanged(false);
+                  }
+                  setShowNotesDrawer(false);
+                }}
+              />
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-[#FDFBF7] border-l border-slate-200 shadow-2xl flex flex-col h-full"
+              >
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-[#FAF8F5]">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-indigo-550" />
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Module Study Notes</h3>
+                      <p className="text-[10px] text-slate-450 font-mono">Auto-saving in background</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      if (hasNotesChanged) {
+                        await saveModuleNotes(notesText);
+                        setHasNotesChanged(false);
+                      }
+                      setShowNotesDrawer(false);
+                    }}
+                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-655 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-grow p-5 flex flex-col">
+                  <textarea
+                    value={notesText}
+                    onChange={(e) => {
+                      setNotesText(e.target.value);
+                      setHasNotesChanged(true);
+                    }}
+                    placeholder="Type notes for this module here..."
+                    className="flex-grow w-full p-4 border border-slate-200 rounded-2xl bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-sans resize-none leading-relaxed min-h-[300px]"
+                  />
+                </div>
+
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[10px] text-slate-455 font-mono">
+                  <span>Notes are linked to this module.</span>
+                  {hasNotesChanged ? (
+                    <span className="text-amber-500 animate-pulse">Unsaved changes...</span>
+                  ) : (
+                    <span className="text-emerald-600">Synced to cloud ✓</span>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Code Compiler Modal */}
+        <AnimatePresence>
+          {showCompilerModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="w-full max-w-5xl bg-[#18181B] border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col h-[90vh]"
+              >
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Code2 className="w-5 h-5 text-indigo-400" />
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">Interactive Code Sandbox</h3>
+                      <p className="text-[10px] text-slate-400 font-mono">Select languages and run code client-side</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowCompilerModal(false)}
+                    className="p-1.5 hover:bg-zinc-800 rounded-lg text-slate-405 hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto py-5">
+                  <CodeCompiler />
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Quiz Modal Overlay */}
+        <AnimatePresence>
+          {showQuizModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="w-full max-w-xl bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-indigo-500" />
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Module Comprehension Test</h3>
+                      <p className="text-[10px] text-slate-450 font-mono">Pass to claim module completion</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowQuizModal(false)}
+                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-655 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto py-5">
+                  <PracticeModule 
+                    lessonContent={lessonContent} 
+                    onComplete={async (stats) => {
+                      await handleCompleteModule(stats);
+                      setShowQuizModal(false);
+                    }} 
+                  />
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

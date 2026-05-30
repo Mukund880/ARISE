@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Brain, FileText, Table, Network, Download } from "lucide-react";
+import { Brain, FileText, Table, Network, Download, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -51,7 +51,7 @@ export function LearningAids({ topicTitle, moduleTitle, topicId, moduleId }: Lea
     try {
       // Create a URL safe ID for the aid document
       const aidDocId = aidType.replace(/\s+/g, "_").toLowerCase();
-      const aidRef = doc(db, "users", user.uid, "topics", topicId, "modules", moduleId, "aids", aidDocId);
+      const aidRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(moduleId), "aids", aidDocId);
       const aidSnap = await getDoc(aidRef);
 
       if (aidSnap.exists()) {
@@ -160,22 +160,49 @@ export function LearningAids({ topicTitle, moduleTitle, topicId, moduleId }: Lea
 
       {aidContent && !isGenerating && (
         <div className="relative bg-white border border-slate-200/80 shadow-inner rounded-xl p-5 mt-4">
-          <Button 
-            onClick={handleDownload} 
-            size="icon" 
-            variant="ghost" 
-            className="absolute top-2 right-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-          >
-            <Download className="w-4 h-4" />
-          </Button>
-          <pre className="text-[11px] text-slate-700 font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto leading-relaxed pt-2 font-semibold">
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+            <Button 
+              onClick={handleDownload} 
+              size="icon" 
+              variant="ghost" 
+              className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 h-8 w-8 rounded-lg"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button 
+              onClick={() => {
+                setAidContent(null);
+                setActiveAid(null);
+              }} 
+              size="icon" 
+              variant="ghost" 
+              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 h-8 w-8 rounded-lg"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <pre className="text-[11px] text-slate-700 font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto leading-relaxed pt-6 font-semibold">
             {aidContent}
           </pre>
         </div>
       )}
 
       {videos.length > 0 && !loadingVideos && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 animate-fade-in">
+        <div className="relative mt-4">
+          <div className="flex justify-end mb-3">
+            <Button
+              onClick={() => {
+                setVideos([]);
+                setActiveAid(null);
+              }}
+              size="sm"
+              variant="outline"
+              className="text-xs h-8 text-slate-500 hover:text-rose-600 border-slate-200 hover:bg-rose-50 rounded-xl flex items-center gap-1.5"
+            >
+              <X className="w-3.5 h-3.5" /> Close Video Guide
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fade-in">
           {videos.map((video) => (
             <div 
               key={video.videoId} 
@@ -218,6 +245,7 @@ export function LearningAids({ topicTitle, moduleTitle, topicId, moduleId }: Lea
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
       
