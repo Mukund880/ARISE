@@ -283,17 +283,15 @@ export default function NewTopicPage() {
             <div className="absolute bottom-10 right-10 w-32 h-32 bg-indigo-200/10 rounded-full blur-xl animate-pulse" />
 
             <div className="flex flex-col items-center gap-4">
-              {/* Super cute, large mascot animation */}
-              <div className="relative p-6 bg-gradient-to-br from-amber-50/50 to-indigo-50/30 rounded-full border border-indigo-100 shadow-inner flex items-center justify-center">
-                <AriseMascot 
-                  size={160} 
-                  state={
-                    loaderStep === 0 ? "searching" :
-                    loaderStep === 1 ? "scanning" :
-                    loaderStep === 2 ? "thinking" :
-                    loaderStep === 3 ? "processing" : "excited"
-                  } 
-                  interactive={false} 
+              {/* Super cute, large mascot video */}
+              <div className="relative w-40 h-40 rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
+                <video 
+                  src="/working.mp4" 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  className="w-full h-full object-cover scale-110"
                 />
                 {/* Pulsing halo */}
                 <div className="absolute inset-0 rounded-full border border-indigo-500/15 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />

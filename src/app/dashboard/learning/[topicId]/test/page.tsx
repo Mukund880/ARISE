@@ -150,7 +150,18 @@ export default function TopicTestPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4 max-w-sm mx-auto text-center">
-        <AriseMascot size={110} state="thinking" />
+        <div className="relative w-28 h-28 rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
+          <video 
+            src="/working.mp4" 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover scale-110"
+          />
+          {/* Pulsing halo */}
+          <div className="absolute inset-0 rounded-full border border-indigo-500/15 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+        </div>
         <h3 className="text-base font-bold animate-pulse text-slate-800 mt-2">Assembling Grand Test...</h3>
         <p className="text-xs text-slate-500 leading-relaxed font-semibold">Retrieving curriculum context metrics and generating challenge questions.</p>
       </div>

@@ -559,7 +559,18 @@ export default function AdaptiveLearningPage() {
           <div className="flex-1 p-6 md:p-8 bg-white/70">
             {loadingLesson ? (
               <div className="flex flex-col items-center justify-center py-32 gap-4 max-w-md mx-auto">
-                <AriseMascot size={130} global={true} />
+                <div className="relative w-32 h-32 rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
+                  <video 
+                    src="/working.mp4" 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline 
+                    className="w-full h-full object-cover scale-110"
+                  />
+                  {/* Pulsing halo */}
+                  <div className="absolute inset-0 rounded-full border border-indigo-500/15 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+                </div>
                 <h3 className="text-lg font-bold animate-pulse text-slate-800 mt-4">ARIS is designing study blocks...</h3>
                 <p className="text-sm text-slate-500 text-center leading-relaxed font-semibold">Reviewing semantic context references and crafting multiple choice practice modules.</p>
               </div>
