@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -20,6 +21,12 @@ export default function RootLayout({
       className={`h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {process.env.NEXT_PUBLIC_DYNATRACE_RUM_URL && (
+          <Script
+            src={process.env.NEXT_PUBLIC_DYNATRACE_RUM_URL}
+            strategy="beforeInteractive"
+          />
+        )}
         <ThemeProvider>
           <AuthProvider>
             {children}
