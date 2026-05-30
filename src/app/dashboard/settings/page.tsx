@@ -24,6 +24,21 @@ export default function SettingsPage() {
   const [name, setName] = useState(user?.displayName || "");
   const [avatarStyle, setAvatarStyle] = useState(userProfile?.avatarStyle || "avataaars");
   const [avatarSeed, setAvatarSeed] = useState(userProfile?.avatarSeed || user?.displayName || "Scholar");
+  
+  const isCustomPhoto = user?.photoURL?.startsWith("/profile-pics/") || false;
+  const [photoType, setPhotoType] = useState<"default" | "custom">(isCustomPhoto ? "custom" : "default");
+  
+  const initialCustomPhoto = isCustomPhoto 
+    ? user?.photoURL?.replace("/profile-pics/", "") || "1.png" 
+    : "1.png";
+  const [selectedCustomPhoto, setSelectedCustomPhoto] = useState<string>(initialCustomPhoto);
+
+  const customPhotos = [
+    "1.png", "2.png", "3.png", "4.png", "5.png", "6,png.png", "7.png", "8.png", "9.png", "10.png",
+    "11.png", "12.png", "13.png", "14.png", "15.png", "16.png", "17.png", "18.png", "19.png", "20.png",
+    "21.png", "22.png"
+  ];
+
   const [learningStyle, setLearningStyle] = useState(userProfile?.learningStyle || "Visual");
   const [dailyTarget, setDailyTarget] = useState(userProfile?.dailyTarget || "30");
   const [updating, setUpdating] = useState(false);
@@ -58,9 +73,14 @@ export default function SettingsPage() {
     setUpdating(true);
     setSuccess(false);
     try {
-      await updateProfile(user, { displayName: name });
+      const updatedPhotoURL = photoType === "custom" ? `/profile-pics/${selectedCustomPhoto}` : "";
+      await updateProfile(user, { 
+        displayName: name,
+        photoURL: updatedPhotoURL
+      });
       await updateDoc(doc(db, "users", user.uid), {
         displayName: name,
+        photoURL: updatedPhotoURL,
         avatarStyle,
         avatarSeed,
         learningStyle,
@@ -106,6 +126,10 @@ export default function SettingsPage() {
       setShowDeleteModal(false);
     }
   };
+
+  const previewPhotoUrl = photoType === "custom"
+    ? `/profile-pics/${selectedCustomPhoto}`
+    : `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${avatarSeed || "User"}`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
@@ -227,38 +251,104 @@ export default function SettingsPage() {
               <div className="w-28 h-28 rounded-full border border-primary/45 p-1 bg-card/50 relative overflow-hidden mb-3 shadow-inner flex items-center justify-center">
                 <div className="w-full h-full bg-card rounded-full flex items-center justify-center overflow-hidden">
                   <img
-                    src={user?.photoURL ? user.photoURL : `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${avatarSeed || "User"}`}
+                    src={previewPhotoUrl}
                     alt="Profile Photo"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${avatarSeed || "User"}`; }}
+                    onError={(e) => { 
+                      if (photoType === "default") {
+                        (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${avatarSeed || "User"}`; 
+                      }
+                    }}
                   />
                 </div>
               </div>
 
-              {user?.photoURL ? (
-                <div className="mb-5 flex items-center gap-1.5 bg-secondary/20 border border-border/50 rounded-md px-3 py-1.5">
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
-                    Connected Account
+              {photoType === "custom" ? (
+                <div className="mb-5 flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-md px-3 py-1.5 text-primary">
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest">
+                    Custom Photo: {selectedCustomPhoto}
                   </span>
                 </div>
               ) : (
-                <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-widest mb-5">Using custom avatar fallback</p>
+                <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-widest mb-5">Using Generative Avatar</p>
               )}
 
-              <div className="w-full space-y-4 text-left border-t border-border/40 pt-4">
-                <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground font-bold">Custom Avatar</p>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-[9px] font-mono uppercase tracking-widest">Avatar Set</Label>
-                  <select value={avatarStyle} onChange={(e) => setAvatarStyle(e.target.value)} className="w-full bg-card border border-border text-foreground h-10 rounded-md text-xs px-3 focus-visible:outline-none focus:border-primary transition-all">
-                    {avatarStyles.map((s) => <option key={s.value} value={s.value} className="bg-card text-foreground">{s.label}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="avatarSeed" className="text-muted-foreground text-[9px] font-mono uppercase tracking-widest">Seed Keyphrase</Label>
-                  <Input id="avatarSeed" value={avatarSeed} onChange={(e) => setAvatarSeed(e.target.value)} placeholder="e.g. PixelBoy" className="bg-card border-border text-foreground focus-visible:ring-primary/20 focus-visible:border-primary h-10 rounded-md text-xs" />
-                </div>
+              {/* Photo Options Toggle Selector */}
+              <div className="flex bg-secondary/15 p-1 rounded-lg border border-border w-full mb-5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPhotoType("default")}
+                  className={`flex-1 py-1.5 text-[9px] font-mono uppercase tracking-wider rounded transition-all cursor-pointer ${
+                    photoType === "default"
+                      ? "bg-primary text-primary-foreground font-bold shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Default (Avatar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoType("custom")}
+                  className={`flex-1 py-1.5 text-[9px] font-mono uppercase tracking-wider rounded transition-all cursor-pointer ${
+                    photoType === "custom"
+                      ? "bg-primary text-primary-foreground font-bold shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Custom Photo
+                </button>
               </div>
+
+              {photoType === "default" ? (
+                <div className="w-full space-y-4 text-left border-t border-border/40 pt-4 animate-in fade-in duration-300">
+                  <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground font-bold">Generative Avatar</p>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-[9px] font-mono uppercase tracking-widest">Avatar Set</Label>
+                    <select value={avatarStyle} onChange={(e) => setAvatarStyle(e.target.value)} className="w-full bg-card border border-border text-foreground h-10 rounded-md text-xs px-3 focus-visible:outline-none focus:border-primary transition-all">
+                      {avatarStyles.map((s) => <option key={s.value} value={s.value} className="bg-card text-foreground">{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="avatarSeed" className="text-muted-foreground text-[9px] font-mono uppercase tracking-widest">Seed Keyphrase</Label>
+                    <Input id="avatarSeed" value={avatarSeed} onChange={(e) => setAvatarSeed(e.target.value)} placeholder="e.g. PixelBoy" className="bg-card border-border text-foreground focus-visible:ring-primary/20 focus-visible:border-primary h-10 rounded-md text-xs" />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full space-y-4 text-left border-t border-border/40 pt-4 animate-in fade-in duration-300">
+                  <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground font-bold mb-2">Choose Custom Photo</p>
+                  <div className="grid grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-1.5 rounded-lg border border-border bg-secondary/5 shadow-inner scrollbar-thin">
+                    {customPhotos.map((photoName) => {
+                      const isSelected = selectedCustomPhoto === photoName;
+                      return (
+                        <button
+                          key={photoName}
+                          type="button"
+                          onClick={() => setSelectedCustomPhoto(photoName)}
+                          className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-300 active:scale-95 cursor-pointer shadow-sm hover:scale-105 ${
+                            isSelected
+                              ? "border-primary bg-primary/5 shadow-md scale-105"
+                              : "border-border hover:border-primary/40 bg-card"
+                          }`}
+                        >
+                          <img
+                            src={`/profile-pics/${photoName}`}
+                            alt={photoName}
+                            className="w-full h-full object-cover"
+                          />
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow">
+                                <Check className="w-3 h-3 text-primary-foreground font-bold" />
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         </div>
