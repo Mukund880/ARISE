@@ -62,7 +62,28 @@ export default function LandingPage() {
           {/* Interactive Mascot Highlight */}
           <div className="my-6 sm:my-8 relative flex flex-col items-center group">
             <div className="absolute inset-0 bg-primary/5 rounded-lg blur-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
-            <AriseMascot state="wave" size={80} framed={true} />
+            <div className="relative p-5 border border-border bg-card/65 backdrop-blur-md rounded-lg flex flex-col items-center justify-center gap-3 shadow-sm transition-all duration-350 hover:border-primary/50 hover:brightness-[1.02]" style={{ width: 120 }}>
+              {/* Inner Gold Accents at Corners */}
+              <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t border-l border-primary/55 pointer-events-none" />
+              <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t border-r border-primary/55 pointer-events-none" />
+              <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b border-l border-primary/55 pointer-events-none" />
+              <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b border-r border-primary/55 pointer-events-none" />
+
+              <div className="relative w-20 h-20 rounded-full overflow-hidden border border-primary/10 shadow-inner flex items-center justify-center bg-white">
+                <video 
+                  src="/waving.mp4" 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  className="w-full h-full object-cover scale-110"
+                />
+              </div>
+
+              <div className="text-[8px] font-mono tracking-[0.25em] text-primary font-bold uppercase select-none border-t border-border/40 pt-2 w-full text-center">
+                ARIS // waving
+              </div>
+            </div>
             <div className="mt-2 sm:mt-4 bg-card border border-border px-3 sm:px-4 py-1 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] font-mono text-primary font-bold shadow-sm">
               "Hi! I'm ARIS, your learning companion!"
             </div>
