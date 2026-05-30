@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     console.log(`Generating AI Content for Module: ${moduleTitle} (Topic: ${topicTitle})`);
     
     const prompt = `
-      You are an expert, world-class computer science educator (like GeeksforGeeks, LeetCode, or MDN).
+      You are an expert, world-class computer science educator.
       Generate an exceptionally detailed, comprehensive, high-fidelity lesson explanation and a practice exercise for the module: "${moduleTitle}" which belongs to the topic: "${topicTitle}".
       
       Requirements for the lesson:
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       
       Format the output strictly as a JSON object with the following structure:
       {
-        "explanation": "A detailed, massive, GeeksforGeeks-grade markdown explanation of the module. Must be 1500+ words, containing rich paragraphs, headers, bullet points, Markdown comparison tables, and copyable code blocks.",
+        "explanation": "A detailed, massive, professional-grade markdown explanation of the module. Must be 1500+ words, containing rich paragraphs, headers, bullet points, Markdown comparison tables, and copyable code blocks.",
         "exerciseType": "MCQ",
         "quizQuestions": [
           {
