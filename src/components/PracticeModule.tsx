@@ -144,8 +144,8 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
   return (
     <div className="bg-[#FDFBF7] border border-slate-200/60 rounded-3xl p-6 md:p-7 shadow-sm relative overflow-visible">
       {/* Immersive Mascot sitting on the quiz card boundary */}
-      <div className="absolute -top-16 -right-6 hidden sm:block pointer-events-auto">
-        <AriseMascot size={90} global={true} />
+      <div className="absolute -top-20 -right-6 hidden sm:block pointer-events-auto">
+        <AriseMascot size={120} global={true} />
       </div>
 
       <div className="flex items-center gap-2 text-indigo-500 font-bold text-xs uppercase tracking-wider mb-5 border-b border-slate-100 pb-3">

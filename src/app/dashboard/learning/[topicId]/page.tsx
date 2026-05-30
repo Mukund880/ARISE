@@ -38,6 +38,7 @@ export default function AdaptiveLearningPage() {
   const [completedXp, setCompletedXp] = useState(100);
   const [completedTitle, setCompletedTitle] = useState("");
   const [successMascot, setSuccessMascot] = useState<any>("great_job");
+  const [showLevelUpModal, setShowLevelUpModal] = useState<number | null>(null);
 
   // Lesson states
   const [activeModule, setActiveModule] = useState<any>(null);
@@ -321,6 +322,11 @@ export default function AdaptiveLearningPage() {
         const earnedXp = activeModule.xp || 100;
         const newXp = currentXp + earnedXp;
         const newLevel = Math.floor(newXp / 1000) + 1;
+        const currentLevel = Math.floor(currentXp / 1000) + 1;
+
+        if (newLevel > currentLevel) {
+          setShowLevelUpModal(newLevel);
+        }
         
         let newRank = "Rookie";
         if (newLevel >= 15) newRank = "Grandmaster";
@@ -1012,8 +1018,8 @@ export default function AdaptiveLearningPage() {
                   }`}
                 >
                   {mod.status === "active" && (
-                    <div className="absolute -top-12 -left-6 pointer-events-none z-20">
-                      <AriseMascot size={70} global={true} />
+                    <div className="absolute -top-16 -left-8 pointer-events-none z-20">
+                      <AriseMascot size={100} global={true} />
                     </div>
                   )}
                   <div className="flex justify-between items-start mb-2 gap-4">
@@ -1135,6 +1141,72 @@ export default function AdaptiveLearningPage() {
                 className="bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl h-11 px-8 text-xs w-full shadow-md active:scale-95 transition-transform cursor-pointer arbuttonchunky"
               >
                 {nextModule ? `Start Next: ${nextModule.title}` : "Continue Curriculum"}
+              </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Level Up Congratulations Modal */}
+      <AnimatePresence>
+        {showLevelUpModal !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              className="w-full max-w-md bg-gradient-to-b from-[#1E1B4B] to-[#311042] border border-indigo-500/30 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-center flex flex-col items-center text-white"
+            >
+              {/* Confetti & Particle Glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 right-10 w-48 h-48 rounded-full bg-pink-500/25 blur-3xl pointer-events-none" />
+
+              {/* Sparkles/Stars shapes */}
+              <div className="absolute top-10 left-10 text-yellow-400 text-2xl animate-pulse">✦</div>
+              <div className="absolute top-24 right-12 text-pink-400 text-xl animate-bounce" style={{ animationDuration: '3s' }}>✨</div>
+              <div className="absolute bottom-20 left-12 text-cyan-450 text-xl animate-pulse">✦</div>
+
+              {/* Mascot section with big mascot */}
+              <div className="mb-6 relative z-10">
+                <div className="absolute -inset-4 bg-indigo-500/10 rounded-full blur-xl animate-pulse" />
+                <AriseMascot size={150} state="celebrating" interactive={false} />
+              </div>
+
+              {/* Animated level up text */}
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: [0.8, 1.1, 1] }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="relative z-10"
+              >
+                <span className="bg-gradient-to-r from-amber-400 via-pink-500 to-indigo-400 bg-clip-text text-transparent text-xs font-black uppercase tracking-widest block mb-1.5">
+                  New Level Unlocked!
+                </span>
+                <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-yellow-300 to-amber-500 bg-clip-text text-transparent drop-shadow-sm mb-4 leading-none font-heading">
+                  Level {showLevelUpModal}
+                </h2>
+              </motion.div>
+
+              <p className="text-xs text-indigo-255 text-indigo-200 leading-relaxed font-semibold max-w-xs mb-6 relative z-10">
+                Incredible progress! You've ascended to a new level. Your learning capabilities are arising higher every day! Keep it up!
+              </p>
+
+              {/* Rank visual representation */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full mb-6 relative z-10 backdrop-blur-sm">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">Current Student Rank</p>
+                <p className="text-base font-black text-amber-300">
+                  {showLevelUpModal >= 15 ? "🏆 Grandmaster" :
+                   showLevelUpModal >= 10 ? "🌟 Master" :
+                   showLevelUpModal >= 5 ? "🎓 Scholar" : "⭐ Rookie"}
+                </p>
+              </div>
+
+              {/* Action buttons */}
+              <Button 
+                onClick={() => setShowLevelUpModal(null)}
+                className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-extrabold rounded-xl h-12 px-8 text-xs w-full shadow-lg active:scale-95 transition-transform cursor-pointer arbuttonchunky border-t border-white/20"
+              >
+                Awesome! Continue 🚀
               </Button>
             </motion.div>
           </div>

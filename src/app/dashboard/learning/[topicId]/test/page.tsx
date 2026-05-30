@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { AriseMascot } from "@/components/AriseMascot";
 
 export default function TopicTestPage() {
@@ -26,6 +26,7 @@ export default function TopicTestPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [gated, setGated] = useState(false);
+  const [showLevelUpModal, setShowLevelUpModal] = useState<number | null>(null);
 
   useEffect(() => {
     async function initTest() {
@@ -112,9 +113,15 @@ export default function TopicTestPage() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const u = docSnap.data();
-        const newXp = (u.xp || 0) + 500;
+        const currentXp = u.xp || 0;
+        const newXp = currentXp + 500;
         const newLevel = Math.floor(newXp / 1000) + 1;
+        const currentLevel = Math.floor(currentXp / 1000) + 1;
         
+        if (newLevel > currentLevel) {
+          setShowLevelUpModal(newLevel);
+        }
+
         let newRank = "Rookie";
         if (newLevel >= 15) newRank = "Grandmaster";
         else if (newLevel >= 10) newRank = "Master";
@@ -150,7 +157,7 @@ export default function TopicTestPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4 max-w-sm mx-auto text-center">
-        <div className="relative w-28 h-28 rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
+        <div className="relative w-[130px] h-[130px] rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
           <video 
             src="/suprised.mp4" 
             autoPlay 
@@ -369,6 +376,72 @@ export default function TopicTestPage() {
           </Button>
         )}
       </div>
+
+      {/* Level Up Congratulations Modal */}
+      <AnimatePresence>
+        {showLevelUpModal !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              className="w-full max-w-md bg-gradient-to-b from-[#1E1B4B] to-[#311042] border border-indigo-500/30 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-center flex flex-col items-center text-white"
+            >
+              {/* Confetti & Particle Glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 right-10 w-48 h-48 rounded-full bg-pink-500/25 blur-3xl pointer-events-none" />
+
+              {/* Sparkles/Stars shapes */}
+              <div className="absolute top-10 left-10 text-yellow-400 text-2xl animate-pulse">✦</div>
+              <div className="absolute top-24 right-12 text-pink-400 text-xl animate-bounce" style={{ animationDuration: '3s' }}>✨</div>
+              <div className="absolute bottom-20 left-12 text-cyan-455 text-xl animate-pulse">✦</div>
+
+              {/* Mascot section with big mascot */}
+              <div className="mb-6 relative z-10">
+                <div className="absolute -inset-4 bg-indigo-500/10 rounded-full blur-xl animate-pulse" />
+                <AriseMascot size={150} state="celebrating" interactive={false} />
+              </div>
+
+              {/* Animated level up text */}
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: [0.8, 1.1, 1] }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="relative z-10"
+              >
+                <span className="bg-gradient-to-r from-amber-400 via-pink-500 to-indigo-400 bg-clip-text text-transparent text-xs font-black uppercase tracking-widest block mb-1.5">
+                  New Level Unlocked!
+                </span>
+                <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-yellow-300 to-amber-500 bg-clip-text text-transparent drop-shadow-sm mb-4 leading-none font-heading">
+                  Level {showLevelUpModal}
+                </h2>
+              </motion.div>
+
+              <p className="text-xs text-indigo-200 leading-relaxed font-semibold max-w-xs mb-6 relative z-10">
+                Incredible progress! You've ascended to a new level. Your learning capabilities are arising higher every day! Keep it up!
+              </p>
+
+              {/* Rank visual representation */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full mb-6 relative z-10 backdrop-blur-sm">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">Current Student Rank</p>
+                <p className="text-base font-black text-amber-300">
+                  {showLevelUpModal >= 15 ? "🏆 Grandmaster" :
+                   showLevelUpModal >= 10 ? "🌟 Master" :
+                   showLevelUpModal >= 5 ? "🎓 Scholar" : "⭐ Rookie"}
+                </p>
+              </div>
+
+              {/* Action buttons */}
+              <Button 
+                onClick={() => setShowLevelUpModal(null)}
+                className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-extrabold rounded-xl h-12 px-8 text-xs w-full shadow-lg active:scale-95 transition-transform cursor-pointer arbuttonchunky border-t border-white/20"
+              >
+                Awesome! Continue 🚀
+              </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -25,6 +25,89 @@ function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+interface TreeNode {
+  text: string;
+  children: TreeNode[];
+}
+
+function parseIndentedTree(text: string): TreeNode[] {
+  const lines = text.split("\n").filter(l => l.trim().length > 0);
+  const roots: TreeNode[] = [];
+  const stack: { node: TreeNode; indent: number }[] = [];
+
+  lines.forEach(line => {
+    const match = line.match(/^(\s*)[-*+•]?\s*(.*)$/);
+    if (!match) return;
+    const indent = match[1].length;
+    const content = match[2].trim();
+    if (!content) return;
+
+    const node: TreeNode = { text: content, children: [] };
+
+    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+      stack.pop();
+    }
+
+    if (stack.length === 0) {
+      roots.push(node);
+    } else {
+      stack[stack.length - 1].node.children.push(node);
+    }
+
+    stack.push({ node, indent });
+  });
+
+  return roots;
+}
+
+function parseMarkdownTable(text: string) {
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const tableLines = lines.filter(line => line.startsWith("|") && line.endsWith("|"));
+  if (tableLines.length < 2) return null;
+
+  const rows = tableLines.map(line => {
+    return line.split("|").slice(1, -1).map(c => c.trim());
+  });
+
+  const hasSeparator = rows[1]?.every(cell => /^:?-+:?$/.test(cell));
+  const headerRow = rows[0];
+  const dataRows = hasSeparator ? rows.slice(2) : rows.slice(1);
+
+  return {
+    headers: headerRow,
+    rows: dataRows
+  };
+}
+
+function ConceptTreeNode({ node, depth = 0 }: { node: TreeNode; depth: number }) {
+  return (
+    <div className="flex flex-col items-center relative">
+      <div className={`relative px-4 py-2.5 rounded-2xl border transition-all duration-300 hover:scale-105 shadow-sm text-center font-bold tracking-tight select-none max-w-xs ${
+        depth === 0 
+          ? "bg-indigo-600 border-indigo-700 text-white text-xs font-black shadow-lg shadow-indigo-100" 
+          : depth === 1 
+            ? "bg-cyan-50 border-cyan-200 text-cyan-700 text-xs font-extrabold"
+            : depth === 2
+              ? "bg-purple-50 border-purple-200 text-purple-700 text-[11px] font-bold"
+              : "bg-slate-50 border-slate-200 text-slate-650 text-[10px]"
+      }`}>
+        {node.text}
+      </div>
+
+      {node.children.length > 0 && (
+        <div className="flex flex-col items-center mt-4 w-full">
+          <div className="w-0.5 h-5 bg-slate-250 bg-slate-200" />
+          <div className="flex flex-wrap justify-center gap-6 relative w-full pt-4 border-t border-dashed border-slate-200">
+            {node.children.map((child, i) => (
+              <ConceptTreeNode key={i} node={child} depth={depth + 1} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface LearningAidsProps {
   topicTitle: string;
   moduleTitle: string;
@@ -158,34 +241,77 @@ export function LearningAids({ topicTitle, moduleTitle, topicId, moduleId }: Lea
         </div>
       )}
 
-      {aidContent && !isGenerating && (
-        <div className="relative bg-white border border-slate-200/80 shadow-inner rounded-xl p-5 mt-4">
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
-            <Button 
-              onClick={handleDownload} 
-              size="icon" 
-              variant="ghost" 
-              className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 h-8 w-8 rounded-lg"
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-            <Button 
-              onClick={() => {
-                setAidContent(null);
-                setActiveAid(null);
-              }} 
-              size="icon" 
-              variant="ghost" 
-              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 h-8 w-8 rounded-lg"
-            >
-              <X className="w-4 h-4" />
-            </Button>
+      {aidContent && !isGenerating && (() => {
+        const parsedTable = activeAid === "Summary Table" ? parseMarkdownTable(aidContent) : null;
+        const parsedTree = activeAid === "Concept Map" ? parseIndentedTree(aidContent) : null;
+        
+        return (
+          <div className="relative bg-white border border-slate-200/80 shadow-inner rounded-xl p-5 mt-4">
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+              <Button 
+                onClick={handleDownload} 
+                size="icon" 
+                variant="ghost" 
+                className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 h-8 w-8 rounded-lg"
+              >
+                <Download className="w-4 h-4" />
+              </Button>
+              <Button 
+                onClick={() => {
+                  setAidContent(null);
+                  setActiveAid(null);
+                }} 
+                size="icon" 
+                variant="ghost" 
+                className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 h-8 w-8 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="pt-6">
+              {activeAid === "Concept Map" && parsedTree && parsedTree.length > 0 ? (
+                <div className="w-full overflow-x-auto py-6 flex flex-col items-center bg-[#FAF9F6] rounded-2xl border border-slate-200/40 p-6 shadow-inner min-h-[300px]">
+                  <div className="flex flex-wrap justify-center gap-12 items-start w-full">
+                    {parsedTree.map((root, i) => (
+                      <ConceptTreeNode key={i} node={root} depth={0} />
+                    ))}
+                  </div>
+                </div>
+              ) : activeAid === "Summary Table" && parsedTable ? (
+                <div className="w-full overflow-x-auto rounded-xl border border-slate-200/80 shadow-sm bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200/85">
+                        {parsedTable.headers.map((header, i) => (
+                          <th key={i} className="py-3 px-4 font-black text-slate-700 uppercase tracking-wider border-r border-slate-200/40 last:border-r-0">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedTable.rows.map((row, rIdx) => (
+                        <tr key={rIdx} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 odd:bg-[#FAF9F6]/20 transition-colors">
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="py-3.5 px-4 text-slate-655 font-semibold leading-relaxed border-r border-slate-200/30 last:border-r-0">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <pre className="text-[11px] text-slate-700 font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto leading-relaxed font-semibold">
+                  {aidContent}
+                </pre>
+              )}
+            </div>
           </div>
-          <pre className="text-[11px] text-slate-700 font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto leading-relaxed pt-6 font-semibold">
-            {aidContent}
-          </pre>
-        </div>
-      )}
+        );
+      })()}
 
       {videos.length > 0 && !loadingVideos && (
         <div className="relative mt-4">
