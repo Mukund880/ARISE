@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { AriseMascot } from "@/components/AriseMascot";
 import { useMascot } from "@/context/MascotContext";
 
@@ -187,6 +187,15 @@ export default function NewTopicPage() {
     try {
       const topicId = topic.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       
+      // Check if topic already exists in database
+      const topicRef = doc(db, "users", user.uid, "topics", topicId);
+      const docSnap = await getDoc(topicRef);
+      if (docSnap.exists()) {
+        console.log(`[Cache Hit] Roadmap for topicId '${topicId}' already exists. Redirecting...`);
+        router.push(`/dashboard/learning/${topicId}`);
+        return;
+      }
+      
       // 1. Upload files if any
       if (files.length > 0) {
         for (const file of files) {
@@ -218,7 +227,6 @@ export default function NewTopicPage() {
       const data = await res.json();
       
       // 3. Save to database
-      const topicRef = doc(db, "users", user.uid, "topics", topicId);
       await setDoc(topicRef, {
         id: topicId,
         title: topic,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { aiService, extractJson } from '@/lib/ai-service';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 export async function POST(req: Request) {
   try {
@@ -35,8 +36,40 @@ export async function POST(req: Request) {
       }
     `;
 
-    const res = await aiService.llm.invoke(prompt);
-    const content = res.content.toString();
+    const modelList = [
+      "gemini-2.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-pro-latest"
+    ];
+    
+    let lastError;
+    let content = "";
+
+    for (const modelName of modelList) {
+      try {
+        const chatModel = new ChatGoogleGenerativeAI({
+          model: modelName,
+          apiKey: process.env.GEMINI_API_KEY,
+          temperature: 0.7,
+          maxRetries: 0,
+          responseMimeType: "application/json",
+        } as any);
+        const res = await chatModel.invoke(prompt);
+        content = res.content.toString();
+        break;
+      } catch (err: any) {
+        console.warn(`Final test generation failed with model ${modelName}:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!content) {
+      throw lastError || new Error("Failed to generate test with any Gemini model.");
+    }
+
     const jsonStr = extractJson(content);
     const questions = JSON.parse(jsonStr);
     return NextResponse.json({ questions });

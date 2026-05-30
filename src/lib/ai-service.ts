@@ -158,7 +158,8 @@ export class AIService {
           apiKey: process.env.GEMINI_API_KEY,
           temperature: 0.7,
           maxRetries: 0,
-        });
+          responseMimeType: "application/json",
+        } as any);
         const response = await chatModel.invoke(prompt);
         const text = response.content.toString();
         const jsonStr = extractJson(text);
@@ -220,11 +221,11 @@ export class AIService {
     const prompt = promptOverride || defaultPrompt;
 
     const modelList = [
-      "gemini-2.5-flash-lite",
       "gemini-3.5-flash",
-      "gemini-flash-latest",
       "gemini-2.5-flash",
       "gemini-2.0-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-flash-lite",
       "gemini-pro-latest"
     ];
     let lastError;
@@ -236,7 +237,8 @@ export class AIService {
           apiKey: process.env.GEMINI_API_KEY,
           temperature: 0.7,
           maxRetries: 0,
-        });
+          responseMimeType: "application/json",
+        } as any);
         const response = await chatModel.invoke(prompt);
         const text = response.content.toString();
         const jsonStr = extractJson(text);

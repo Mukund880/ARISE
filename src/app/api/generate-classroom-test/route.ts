@@ -51,7 +51,8 @@ export async function POST(req: Request) {
           apiKey: process.env.GEMINI_API_KEY,
           temperature: 0.7,
           maxRetries: 0,
-        });
+          responseMimeType: "application/json",
+        } as any);
         const res = await chatModel.invoke(prompt);
         content = res.content.toString();
         break;
