@@ -80,7 +80,6 @@ export class AIService {
 
   async generatePersonalizedRoadmap(topic: string, knowledgeLevel: string, goal: string, topicId?: string) {
     let contextStr = "";
-    let hasCustomContext = false;
 
     if (topicId) {
       try {
@@ -92,7 +91,6 @@ export class AIService {
         // Search Pinecone for context related to the topic
         const results = await vectorStore.similaritySearch(topic, 3, { topicId });
         if (results.length > 0) {
-          hasCustomContext = true;
           contextStr = "\nHere is custom material uploaded by the user. Ensure the roadmap specifically covers this material:\n";
           results.forEach((doc, i) => {
             contextStr += `\n[Source ${i+1}]: ${doc.pageContent}\n`;
@@ -103,28 +101,6 @@ export class AIService {
       }
     }
 
-    const canCache = !hasCustomContext;
-    let cacheKey = "";
-    let cacheRef: any = null;
-
-    if (canCache) {
-      try {
-        const { db } = await import('@/lib/firebase');
-        const { doc, getDoc } = await import('firebase/firestore');
-        
-        // Create a deterministic cache key based on inputs
-        cacheKey = `roadmap_${topic.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}_${knowledgeLevel.toLowerCase().trim()}_${goal.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}`;
-        cacheRef = doc(db, 'roadmap_cache', cacheKey);
-        
-        const cacheSnap = await getDoc(cacheRef);
-        if (cacheSnap.exists()) {
-          console.log(`[Cache Hit] Returning existing roadmap for key: ${cacheKey}`);
-          return (cacheSnap.data() as any).roadmap;
-        }
-      } catch (e) {
-        console.warn("Failed to check global roadmap cache:", e);
-      }
-    }
 
     const prompt = `
     You are an expert AI tutor. 
@@ -169,21 +145,6 @@ export class AIService {
         const jsonStr = extractJson(text);
         const parsedRoadmap = JSON.parse(jsonStr);
 
-        if (canCache && cacheRef) {
-          try {
-            const { setDoc } = await import('firebase/firestore');
-            await setDoc(cacheRef, { 
-              topic,
-              knowledgeLevel,
-              goal,
-              roadmap: parsedRoadmap,
-              createdAt: new Date().toISOString()
-            });
-            console.log(`[Cache Miss] Saved new roadmap to cache: ${cacheKey}`);
-          } catch (e) {
-            console.warn("Failed to write to roadmap cache", e);
-          }
-        }
 
         return parsedRoadmap;
       } catch (error: any) {
