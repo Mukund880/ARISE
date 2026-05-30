@@ -62,11 +62,11 @@ export class AIService {
 
   constructor() {
     this.llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-pro",
       apiKey: process.env.GEMINI_API_KEY,
       temperature: 0.7,
       maxRetries: 0,
-    });
+    } as any);
 
     this.embeddings = new GoogleGenerativeAIEmbeddings({
       model: "models/gemini-embedding-001",
@@ -142,11 +142,14 @@ export class AIService {
     `;
 
     const modelList = [
-      "gemini-2.5-flash-lite",
+      "gemini-3.5-pro",
+      "gemini-2.5-pro",
+      "gemini-3.1-pro-preview",
       "gemini-3.5-flash",
-      "gemini-flash-latest",
       "gemini-2.5-flash",
       "gemini-2.0-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-flash-lite",
       "gemini-pro-latest"
     ];
     let lastError;
@@ -221,6 +224,9 @@ export class AIService {
     const prompt = promptOverride || defaultPrompt;
 
     const modelList = [
+      "gemini-3.5-pro",
+      "gemini-2.5-pro",
+      "gemini-3.1-pro-preview",
       "gemini-3.5-flash",
       "gemini-2.5-flash",
       "gemini-2.0-flash",
