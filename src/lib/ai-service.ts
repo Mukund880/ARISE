@@ -80,30 +80,7 @@ export class AIService {
 
   async generatePersonalizedRoadmap(topic: string, knowledgeLevel: string, goal: string, topicId?: string) {
     let contextStr = "";
-    
-    // Only use cache for generic requests (no custom topicId/RAG)
-    const canCache = !topicId;
-    let cacheKey = "";
-    let cacheRef: any = null;
-    
-    if (canCache) {
-      const { db } = await import('@/lib/firebase');
-      const { doc, getDoc } = await import('firebase/firestore');
-      
-      // Create a deterministic cache key based on inputs
-      cacheKey = `roadmap_${topic.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}_${knowledgeLevel.toLowerCase().trim()}_${goal.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}`;
-      cacheRef = doc(db, 'roadmap_cache', cacheKey);
-      
-      try {
-        const cacheSnap = await getDoc(cacheRef);
-        if (cacheSnap.exists()) {
-          console.log(`[Cache Hit] Returning existing roadmap for key: ${cacheKey}`);
-          return (cacheSnap.data() as any).roadmap;
-        }
-      } catch (e) {
-        console.warn("Failed to read from roadmap cache", e);
-      }
-    }
+    let hasCustomContext = false;
 
     if (topicId) {
       try {
@@ -115,6 +92,7 @@ export class AIService {
         // Search Pinecone for context related to the topic
         const results = await vectorStore.similaritySearch(topic, 3, { topicId });
         if (results.length > 0) {
+          hasCustomContext = true;
           contextStr = "\nHere is custom material uploaded by the user. Ensure the roadmap specifically covers this material:\n";
           results.forEach((doc, i) => {
             contextStr += `\n[Source ${i+1}]: ${doc.pageContent}\n`;
@@ -122,6 +100,29 @@ export class AIService {
         }
       } catch (e) {
         console.warn("Pinecone search skipped or failed during roadmap generation:", e);
+      }
+    }
+
+    const canCache = !hasCustomContext;
+    let cacheKey = "";
+    let cacheRef: any = null;
+
+    if (canCache) {
+      try {
+        const { db } = await import('@/lib/firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        
+        // Create a deterministic cache key based on inputs
+        cacheKey = `roadmap_${topic.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}_${knowledgeLevel.toLowerCase().trim()}_${goal.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')}`;
+        cacheRef = doc(db, 'roadmap_cache', cacheKey);
+        
+        const cacheSnap = await getDoc(cacheRef);
+        if (cacheSnap.exists()) {
+          console.log(`[Cache Hit] Returning existing roadmap for key: ${cacheKey}`);
+          return (cacheSnap.data() as any).roadmap;
+        }
+      } catch (e) {
+        console.warn("Failed to check global roadmap cache:", e);
       }
     }
 

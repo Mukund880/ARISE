@@ -140,6 +140,76 @@ export default function AdaptiveLearningPage() {
 
   const progress = modules.length > 0 ? Math.round((completedModules.length / modules.length) * 100) : 0;
 
+  const prefetchNextModules = async (currentModuleId: any) => {
+    if (!user || !topicData || !modules) return;
+    const currentIdx = modules.findIndex((m: any) => String(m.id) === String(currentModuleId));
+    if (currentIdx === -1) return;
+
+    const nextModulesToPrefetch = [];
+    for (let i = 1; i <= 2; i++) {
+      const nextMod = modules[currentIdx + i];
+      if (nextMod) {
+        nextModulesToPrefetch.push(nextMod);
+      }
+    }
+
+    for (const mod of nextModulesToPrefetch) {
+      try {
+        const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(mod.id));
+        const moduleContentSnap = await getDoc(moduleContentRef);
+        
+        if (!moduleContentSnap.exists()) {
+          console.log(`[Background Prefetch] Generating module: ${mod.title}`);
+          const res = await fetch("/api/generate-module-content", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topicTitle: topicData.title,
+              moduleTitle: mod.title,
+              level: topicData.level || "Beginner",
+              goal: topicData.goal || "Master the concepts"
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            await setDoc(moduleContentRef, data);
+            console.log(`[Background Prefetch] Saved module content: ${mod.title}`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[Background Prefetch] Failed for module: ${mod.title}`, err);
+      }
+    }
+  };
+
+  const prefetchLearningAids = async (topicTitle: string, moduleTitle: string, moduleId: any) => {
+    if (!user) return;
+    const aids = ["Cheat Sheet", "Summary Table", "Concept Map"];
+    for (const aidType of aids) {
+      try {
+        const aidDocId = aidType.replace(/\s+/g, "_").toLowerCase();
+        const aidRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(moduleId), "aids", aidDocId);
+        const aidSnap = await getDoc(aidRef);
+        
+        if (!aidSnap.exists()) {
+          console.log(`[Background Prefetch] Generating aid ${aidType} for module: ${moduleTitle}`);
+          const res = await fetch("/api/learning-aids", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topicTitle, moduleTitle, aidType })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            await setDoc(aidRef, { content: data.content });
+            console.log(`[Background Prefetch] Saved aid ${aidType} for module: ${moduleTitle}`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[Background Prefetch] Failed for aid ${aidType}:`, err);
+      }
+    }
+  };
+
   const handleStartModule = async (module: any) => {
     const freshModule = modules.find((m: any) => m.id === module.id);
     if (!freshModule || freshModule.status === "locked") return;
@@ -182,6 +252,11 @@ export default function AdaptiveLearningPage() {
       }
       setNotesText(data?.studentNotes || "");
       setHasNotesChanged(false);
+
+      if (data && !data.error) {
+        prefetchNextModules(freshModule.id);
+        prefetchLearningAids(topicData.title, freshModule.title, freshModule.id);
+      }
     } catch (err) {
       console.error(err);
       setLessonContent({

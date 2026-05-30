@@ -104,7 +104,7 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
                 disabled={selectedAnswer !== null}
               >
                 <span>{option}</span>
-                {selectedAnswer === i && isCorrectOption && (
+                {selectedAnswer !== null && isCorrectOption && (
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-green-500" />
                 )}
                 {selectedAnswer === i && !isCorrectOption && (
@@ -115,32 +115,27 @@ export function PracticeModule({ lessonContent, onComplete }: PracticeModuleProp
           })}
         </div>
 
-        {isCorrect === false && (
-          <Button
-            onClick={() => {
-              setSelectedAnswer(null);
-              setIsCorrect(null);
-            }}
-            className="w-full h-12 bg-indigo-600 text-white hover:bg-indigo-750 font-bold rounded-xl text-xs shadow-md active:scale-95 arbuttonchunky mt-2"
-          >
-            Try Again
-          </Button>
-        )}
+        {selectedAnswer !== null && (
+          <div className="space-y-4">
+            <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-xs text-slate-700 leading-relaxed font-semibold shadow-inner mt-2">
+              <span className="block text-[10px] font-mono tracking-wider text-indigo-500 uppercase font-black mb-1.5">Explanation</span>
+              <p>{currentQ.hint}</p>
+            </div>
 
-        {isCorrect === true && (
-          <Button
-            onClick={handleNext}
-            className="w-full h-12 bg-green-600 text-white hover:bg-green-700 font-bold rounded-xl text-xs shadow-md active:scale-95 arbuttonchunky mt-2 flex items-center justify-center gap-1.5"
-          >
-            {currentQuestionIdx < questions.length - 1 ? (
-              <>
-                <span>Next Question</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            ) : (
-              <span>Complete Module</span>
-            )}
-          </Button>
+            <Button
+              onClick={handleNext}
+              className="w-full h-12 bg-indigo-650 bg-indigo-600 hover:bg-indigo-750 text-white font-bold rounded-xl text-xs shadow-md active:scale-95 arbuttonchunky mt-2 flex items-center justify-center gap-1.5"
+            >
+              {currentQuestionIdx < questions.length - 1 ? (
+                <>
+                  <span>Next Question</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <span>Complete Module</span>
+              )}
+            </Button>
+          </div>
         )}
       </div>
     );
