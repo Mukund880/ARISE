@@ -152,7 +152,7 @@ export default function TopicTestPage() {
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4 max-w-sm mx-auto text-center">
         <div className="relative w-28 h-28 rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
           <video 
-            src="/working.mp4" 
+            src="/suprised.mp4" 
             autoPlay 
             loop 
             muted 

@@ -286,7 +286,7 @@ export default function NewTopicPage() {
               {/* Super cute, large mascot video */}
               <div className="relative w-40 h-40 rounded-full overflow-hidden border border-indigo-100 shadow-inner flex items-center justify-center bg-white">
                 <video 
-                  src="/working.mp4" 
+                  src="/waving.mp4" 
                   autoPlay 
                   loop 
                   muted 
