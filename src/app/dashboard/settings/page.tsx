@@ -19,7 +19,11 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "theme" | "support">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "theme" | "support" | "devops">("profile");
+
+  // DevOps / Monitoring state
+  const [devopsEnv, setDevopsEnv] = useState<"gke" | "cloudrun">("gke");
+  const [copiedManifestId, setCopiedManifestId] = useState<string | null>(null);
 
   const [name, setName] = useState(user?.displayName || "");
   const [avatarStyle, setAvatarStyle] = useState(userProfile?.avatarStyle || "avataaars");
@@ -176,6 +180,16 @@ export default function SettingsPage() {
             }`}
           >
             <LifeBuoy className="w-3 h-3" /> Support
+          </button>
+          <button
+            onClick={() => setActiveTab("devops")}
+            className={`flex-1 py-1.5 px-3.5 text-[10px] font-mono uppercase tracking-wider rounded transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              activeTab === "devops"
+                ? "bg-primary text-primary-foreground font-bold shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Settings className="w-3 h-3" /> DevOps
           </button>
         </div>
       </div>
@@ -475,6 +489,208 @@ export default function SettingsPage() {
                 </Button>
               </form>
             </Card>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "devops" && (
+        <div className="space-y-8 animate-in fade-in duration-300">
+          <Card className="p-6 border-border bg-card rounded-lg shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border/40 pb-5 mb-6">
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-primary" /> Dynatrace Operator Orchestrator
+                </h3>
+                <p className="text-muted-foreground text-[11px] mt-1">
+                  Manage containerization blueprints and configure Dynatrace full-stack injection for GCP.
+                </p>
+              </div>
+
+              {/* Environment Selector Toggle */}
+              <div className="flex bg-secondary/15 p-1 rounded-lg border border-border shrink-0 w-full md:w-auto">
+                <button
+                  onClick={() => setDevopsEnv("gke")}
+                  className={`flex-1 md:flex-none py-1 px-4 text-[10px] font-mono uppercase tracking-wider rounded transition-all cursor-pointer ${
+                    devopsEnv === "gke"
+                      ? "bg-primary text-primary-foreground font-bold shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  GCP GKE (Kubernetes)
+                </button>
+                <button
+                  onClick={() => setDevopsEnv("cloudrun")}
+                  className={`flex-1 md:flex-none py-1 px-4 text-[10px] font-mono uppercase tracking-wider rounded transition-all cursor-pointer ${
+                    devopsEnv === "cloudrun"
+                      ? "bg-primary text-primary-foreground font-bold shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Google Cloud Run
+                </button>
+              </div>
+            </div>
+
+            {/* Simulating Monitoring Health Statuses */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="p-4 rounded-xl border border-emerald-500/25 bg-emerald-500/5 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <div>
+                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider font-mono">Agent Injection</p>
+                  <p className="text-xs font-semibold text-foreground">Ready for deployment</p>
+                </div>
+              </div>
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0" />
+                <div>
+                  <p className="text-[10px] text-primary font-bold uppercase tracking-wider font-mono">Target Platform</p>
+                  <p className="text-xs font-semibold text-foreground">{devopsEnv === "gke" ? "Google GKE Cluster" : "GCP Cloud Run"}</p>
+                </div>
+              </div>
+              <div className="p-4 rounded-xl border border-indigo-500/25 bg-indigo-500/5 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider font-mono">Operator Schema</p>
+                  <p className="text-xs font-semibold text-foreground">dynatrace-operator v1.0</p>
+                </div>
+              </div>
+            </div>
+
+            {devopsEnv === "gke" ? (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">GKE Setup Walkthrough</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Deploying the Dynatrace Operator on Google Kubernetes Engine (Standard/Autopilot) enables dynamic instrumentation of Next.js pods. Follow these steps:
+                  </p>
+                </div>
+
+                <div className="bg-secondary/10 border border-border/80 rounded-xl p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">1</span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-foreground">Connect to your GCP Cluster</p>
+                      <pre className="p-3 bg-secondary/20 rounded-lg text-[10px] font-mono text-muted-foreground overflow-x-auto">
+                        gcloud container clusters get-credentials {"<CLUSTER_NAME>"} --zone {"<ZONE>"} --project {"<PROJECT_ID>"}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">2</span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-foreground">Install Dynatrace Operator via Helm</p>
+                      <pre className="p-3 bg-secondary/20 rounded-lg text-[10px] font-mono text-muted-foreground overflow-x-auto">
+                        {`helm repo add dynatrace https://raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable\nhelm repo update\nhelm install dynatrace-operator dynatrace/dynatrace-operator -n dynatrace --create-namespace --set installCRD=true`}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">3</span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-foreground">Label your namespace to trigger auto-injection</p>
+                      <pre className="p-3 bg-secondary/20 rounded-lg text-[10px] font-mono text-muted-foreground overflow-x-auto">
+                        kubectl label namespace arise-prod oneagent.dynatrace.com/instance=arise-monitoring
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">Google Cloud Run / Firebase App Hosting Setup</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Cloud Run operates as a serverless container host. Since the server infrastructure is fully managed, you monitor it by adding the Dynatrace package directly into your Docker build:
+                  </p>
+                </div>
+
+                <div className="bg-secondary/10 border border-border/80 rounded-xl p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">1</span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-foreground">Containerize the app using the Dockerfile</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">The production multi-stage Dockerfile compiles and optimizes Next.js build chunks, packaging them to be hosted as a serverless instance.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">2</span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-foreground">Integrate Dynatrace NPM OneAgent (Optional)</p>
+                      <pre className="p-3 bg-secondary/20 rounded-lg text-[10px] font-mono text-muted-foreground overflow-x-auto">
+                        npm install @dynatrace/oneagent --save
+                      </pre>
+                      <p className="text-xs text-muted-foreground leading-relaxed">Require this at the very beginning of your Next.js application start script to monitor function invocations.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Copyable Manifest Files Tabs */}
+          <div className="space-y-4">
+            <h4 className="text-xs font-mono uppercase tracking-widest text-primary font-bold">Deployment Manifest Templates</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Dockerfile card */}
+              <Card className="p-5 border-border bg-card rounded-lg flex flex-col justify-between shadow-sm relative overflow-hidden">
+                <div>
+                  <h5 className="text-xs font-bold text-foreground mb-1">Dockerfile</h5>
+                  <p className="text-[10px] text-muted-foreground leading-normal mb-4">Optimized production Docker container config for hosting Next.js on GCP.</p>
+                </div>
+                <Button 
+                  onClick={() => {
+                    const dockerfileText = `FROM node:18-alpine AS deps\nRUN apk add --no-cache libc6-compat\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\n\nFROM node:18-alpine AS builder\nWORKDIR /app\nCOPY --from=deps /app/node_modules ./node_modules\nCOPY . .\nENV NEXT_TELEMETRY_DISABLED=1\nRUN npm run build\n\nFROM node:18-alpine AS runner\nWORKDIR /app\nENV NODE_ENV=production\nENV PORT=3000\nENV HOSTNAME="0.0.0.0"\nCOPY --from=builder /app/public ./public\nCOPY --from=builder /app/.next ./.next\nCOPY --from=builder /app/node_modules ./node_modules\nCOPY --from=builder /app/package.json ./package.json\nEXPOSE 3000\nCMD ["npm", "start"]`;
+                    navigator.clipboard.writeText(dockerfileText);
+                    setCopiedManifestId("dockerfile");
+                    setTimeout(() => setCopiedManifestId(null), 2500);
+                  }}
+                  className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-mono text-[10px] uppercase tracking-wider h-9 rounded cursor-pointer"
+                >
+                  {copiedManifestId === "dockerfile" ? "Copied! ✓" : "Copy Dockerfile"}
+                </Button>
+              </Card>
+
+              {/* deployment.yaml card */}
+              <Card className="p-5 border-border bg-card rounded-lg flex flex-col justify-between shadow-sm relative overflow-hidden">
+                <div>
+                  <h5 className="text-xs font-bold text-foreground mb-1">deployment.yaml</h5>
+                  <p className="text-[10px] text-muted-foreground leading-normal mb-4">Kubernetes deployment manifest template with liveness/readiness probes.</p>
+                </div>
+                <Button 
+                  onClick={() => {
+                    const deployText = `apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: arise-lms\n  namespace: arise-prod\n  labels:\n    app: arise-lms\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: arise-lms\n  template:\n    metadata:\n      labels:\n        app: arise-lms\n    spec:\n      containers:\n      - name: arise-lms\n        image: us-central1-docker.pkg.dev/your-project-id/arise-repo/nextjs-app:latest\n        ports:\n        - containerPort: 3000`;
+                    navigator.clipboard.writeText(deployText);
+                    setCopiedManifestId("deployment");
+                    setTimeout(() => setCopiedManifestId(null), 2500);
+                  }}
+                  className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-mono text-[10px] uppercase tracking-wider h-9 rounded cursor-pointer"
+                >
+                  {copiedManifestId === "deployment" ? "Copied! ✓" : "Copy Deployment YAML"}
+                </Button>
+              </Card>
+
+              {/* dynakube.yaml card */}
+              <Card className="p-5 border-border bg-card rounded-lg flex flex-col justify-between shadow-sm relative overflow-hidden">
+                <div>
+                  <h5 className="text-xs font-bold text-foreground mb-1">dynakube.yaml</h5>
+                  <p className="text-[10px] text-muted-foreground leading-normal mb-4">DynaKube resource configuration template for OneAgent cluster injection.</p>
+                </div>
+                <Button 
+                  onClick={() => {
+                    const dkubeText = `apiVersion: dynatrace.com/v1beta1\nkind: DynaKube\nmetadata:\n  name: arise-monitoring\n  namespace: dynatrace\nspec:\n  apiUrl: https://abc12345.live.dynatrace.com/api\n  tokens: arise-monitoring-tokens\n  oneAgent:\n    cloudNativeFullStack:\n      nodeSelector:\n        kubernetes.io/os: linux`;
+                    navigator.clipboard.writeText(dkubeText);
+                    setCopiedManifestId("dynakube");
+                    setTimeout(() => setCopiedManifestId(null), 2500);
+                  }}
+                  className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-mono text-[10px] uppercase tracking-wider h-9 rounded cursor-pointer"
+                >
+                  {copiedManifestId === "dynakube" ? "Copied! ✓" : "Copy DynaKube YAML"}
+                </Button>
+              </Card>
+            </div>
           </div>
         </div>
       )}

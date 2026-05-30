@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arise-lms
+  namespace: arise-prod
+  labels:
+    app: arise-lms
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: arise-lms
+  template:
+    metadata:
+      labels:
+        app: arise-lms
+    spec:
+      containers:
+      - name: arise-lms
+        image: us-central1-docker.pkg.dev/your-project-id/arise-repo/nextjs-app:latest
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          httpGet:
+            path: /api/gamification/leaderboard
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/gamification/leaderboard
+            port: 3000
+          initialDelaySeconds: 20
+          periodSeconds: 20
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arise-service
+  namespace: arise-prod
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: arise-lms

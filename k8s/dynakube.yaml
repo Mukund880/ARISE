@@ -1,0 +1,23 @@
+apiVersion: dynatrace.com/v1beta1
+kind: DynaKube
+metadata:
+  name: arise-monitoring
+  namespace: dynatrace
+spec:
+  # The URL of your Dynatrace environment API (replace with your environment ID)
+  apiUrl: https://abc12345.live.dynatrace.com/api
+
+  # Name of the secret containing API and PaaS tokens
+  tokens: arise-monitoring-tokens
+
+  # GKE Standard Cloud-Native FullStack Monitoring Configuration
+  oneAgent:
+    cloudNativeFullStack:
+      nodeSelector:
+        kubernetes.io/os: linux
+
+  # GKE Autopilot Mode Configuration
+  # Uncomment the lines below and comment out the cloudNativeFullStack block if you deploy to a GKE Autopilot cluster:
+  # oneAgent:
+  #   applicationMonitoring:
+  #     useAppVolume: true
