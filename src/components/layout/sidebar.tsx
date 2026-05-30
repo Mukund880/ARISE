@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Brain, LayoutDashboard, Compass, Users, BookOpen,
-  Settings, TrendingUp, CreditCard, GraduationCap,
+  Settings, TrendingUp, CreditCard, GraduationCap, FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
@@ -14,6 +14,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard",     href: "/dashboard" },
   { icon: Compass,         label: "Explore Topics", href: "/dashboard/explore" },
   { icon: BookOpen,        label: "My Learning",    href: "/dashboard/learning" },
+  { icon: FileText,        label: "My Notes",       href: "/dashboard/notes" },
   { icon: TrendingUp,      label: "My Progress",    href: "/dashboard/progress" },
   { icon: Users,           label: "Squads",         href: "/dashboard/squads" },
   { icon: CreditCard,      label: "Pricing",        href: "/dashboard/pricing" },

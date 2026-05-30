@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Play, CheckCircle2, Lock, Flame, Zap, X, Trophy, Layers, Download } from "lucide-react";
+import { Brain, Play, CheckCircle2, Lock, Flame, Zap, X, Trophy, Layers, Download, FileText, Code2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { SmartTextWrapper } from "@/components/SmartTextWrapper";
 import { LearningAids } from "@/components/LearningAids";
 import { PracticeModule } from "@/components/PracticeModule";
+import { CodeCompiler } from "@/components/CodeCompiler";
 import { AriseMascot } from "@/components/AriseMascot";
 import { useMascot } from "@/context/MascotContext";
 
@@ -49,6 +50,36 @@ export default function AdaptiveLearningPage() {
   const [claimingXp, setClaimingXp] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
+
+  // Notes, compiler, and focused test states
+  const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+  const [notesText, setNotesText] = useState("");
+  const [hasNotesChanged, setHasNotesChanged] = useState(false);
+  const [nextModule, setNextModule] = useState<any>(null);
+  const [showCompilerModal, setShowCompilerModal] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+
+  // Debounced auto-save for notes
+  useEffect(() => {
+    if (!activeModule || !user || !hasNotesChanged) return;
+    const delay = setTimeout(() => {
+      saveModuleNotes(notesText);
+      setHasNotesChanged(false);
+    }, 1500);
+    return () => clearTimeout(delay);
+  }, [notesText, hasNotesChanged]);
+
+  const saveModuleNotes = async (text: string) => {
+    if (!user || !activeModule) return;
+    try {
+      const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(activeModule.id));
+      await updateDoc(moduleContentRef, {
+        studentNotes: text
+      });
+    } catch (e) {
+      console.warn("Failed to auto-save notes:", e);
+    }
+  };
 
   useEffect(() => {
     async function fetchTopic() {
@@ -110,42 +141,47 @@ export default function AdaptiveLearningPage() {
   const progress = modules.length > 0 ? Math.round((completedModules.length / modules.length) * 100) : 0;
 
   const handleStartModule = async (module: any) => {
-    if (module.status === "locked") return;
-    setActiveModule(module);
+    const freshModule = modules.find((m: any) => m.id === module.id);
+    if (!freshModule || freshModule.status === "locked") return;
+    setActiveModule(freshModule);
     setLoadingLesson(true);
     triggerEmotion("thinking", 20000);
     setSelectedOption(null);
     setQuizAnswered(false);
     setQuizCorrect(false);
     setShowHint(false);
-    setClaimed(completedModules.includes(module.id));
+    setClaimed(completedModules.includes(freshModule.id));
     setStartTime(Date.now());
     
     try {
       if (!user) throw new Error("Not authenticated");
-      const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(module.id));
+      const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(freshModule.id));
       const moduleContentSnap = await getDoc(moduleContentRef);
       
+      let data;
       if (moduleContentSnap.exists()) {
-        setLessonContent(moduleContentSnap.data());
+        data = moduleContentSnap.data();
+        setLessonContent(data);
       } else {
         const res = await fetch("/api/generate-module-content", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             topicTitle: topicData.title,
-            moduleTitle: module.title,
+            moduleTitle: freshModule.title,
             level: topicData.level || "Beginner",
             goal: topicData.goal || "Master the concepts"
           })
         });
         
         if (!res.ok) throw new Error("Failed to generate content");
-        const data = await res.json();
+        data = await res.json();
         
         await setDoc(moduleContentRef, data);
         setLessonContent(data);
       }
+      setNotesText(data?.studentNotes || "");
+      setHasNotesChanged(false);
     } catch (err) {
       console.error(err);
       setLessonContent({
@@ -156,6 +192,8 @@ export default function AdaptiveLearningPage() {
         correctOptionIndex: 0,
         hint: "Try again."
       });
+      setNotesText("");
+      setHasNotesChanged(false);
     } finally {
       setLoadingLesson(false);
     }
@@ -166,10 +204,22 @@ export default function AdaptiveLearningPage() {
     setClaimingXp(true);
     triggerEmotion("excited", 3500);
     try {
+      if (hasNotesChanged) {
+        await saveModuleNotes(notesText);
+        setHasNotesChanged(false);
+      }
+
       const isAlreadyCompleted = completedModules.includes(activeModule.id);
       const earnedXp = activeModule.xp || 100;
       setCompletedXp(earnedXp);
       setCompletedTitle(activeModule.title);
+      
+      const currentIdx = modules.findIndex((m: any) => m.id === activeModule.id);
+      if (currentIdx !== -1 && currentIdx < modules.length - 1) {
+        setNextModule(modules[currentIdx + 1]);
+      } else {
+        setNextModule(null);
+      }
       
       const mascotStates = ["great_job", "celebrating", "cheering", "high_five", "success"];
       const randomState = mascotStates[Math.floor(Math.random() * mascotStates.length)];
@@ -462,10 +512,10 @@ export default function AdaptiveLearningPage() {
 
   if (activeModule) {
     return (
-      <div className="max-w-6xl mx-auto pb-16 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="max-w-5xl mx-auto pb-16 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="w-full bg-[#FDFBF7] border border-slate-200/60 rounded-3xl overflow-hidden shadow-lg flex flex-col min-h-[85vh]">
           {/* Window Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-[#FAF8F5]">
+          <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-[#FAF8F5] flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
                 <Brain className="w-6 h-6 text-indigo-500" />
@@ -475,12 +525,34 @@ export default function AdaptiveLearningPage() {
                 <p className="text-[11px] text-slate-500 uppercase tracking-widest font-extrabold mt-0.5">ARISE Study Arena</p>
               </div>
             </div>
-            <button 
-              onClick={() => { setActiveModule(null); setLessonContent(null); }}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors shadow-sm flex items-center gap-2"
-            >
-              <X className="w-4 h-4" /> Close Lesson
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowNotesDrawer(true)}
+                className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-indigo-650 font-bold text-xs transition-colors shadow-sm flex items-center gap-2 cursor-pointer animate-pulse"
+              >
+                <FileText className="w-4 h-4 text-indigo-500" /> Notes
+              </button>
+              <button 
+                onClick={() => setShowCompilerModal(true)}
+                className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-cyan-600 font-bold text-xs transition-colors shadow-sm flex items-center gap-2 cursor-pointer"
+              >
+                <Code2 className="w-4 h-4 text-cyan-500" /> Compiler
+              </button>
+              <button 
+                onClick={async () => {
+                  if (hasNotesChanged) {
+                    await saveModuleNotes(notesText);
+                    setHasNotesChanged(false);
+                  }
+                  setActiveModule(null); 
+                  setLessonContent(null); 
+                }}
+                className="px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors shadow-sm flex items-center gap-2 cursor-pointer"
+              >
+                <X className="w-4 h-4" /> Close Lesson
+              </button>
+            </div>
           </div>
 
           {/* Window Body */}
@@ -493,132 +565,135 @@ export default function AdaptiveLearningPage() {
               </div>
             ) : (
               lessonContent && (
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 bg-white p-6 md:p-8 rounded-2xl border border-slate-100 shadow-sm">
-                  {/* Left side: Lesson explanation */}
-                  <div className="lg:col-span-3 space-y-6 pr-0 lg:pr-8 border-r-0 lg:border-r border-slate-100">
-                    <div className="flex items-center gap-2 text-cyan-600 font-bold text-sm uppercase tracking-wider mb-2">
-                      <Layers className="w-5 h-5 text-cyan-600" />
-                      <span>Lesson Block</span>
+                <div className="w-full space-y-6 bg-white p-6 md:p-8 rounded-2xl border border-slate-100 shadow-sm">
+                  <div className="flex items-center gap-2 text-cyan-600 font-bold text-sm uppercase tracking-wider mb-2">
+                    <Layers className="w-5 h-5 text-cyan-600" />
+                    <span>Lesson Block</span>
+                  </div>
+                  <SmartTextWrapper topicTitle={topicName}>
+                    <div className="prose prose-slate max-w-none text-slate-700 space-y-4 font-semibold">
+                      {parseMarkdown(lessonContent.explanation)}
                     </div>
-                    <SmartTextWrapper topicTitle={topicName}>
-                      <div className="prose prose-slate max-w-none text-slate-700 space-y-4 font-semibold">
-                        {parseMarkdown(lessonContent.explanation)}
-                      </div>
-                    </SmartTextWrapper>
+                  </SmartTextWrapper>
 
-                    {/* Visual Concept SVG Chart */}
-                    {lessonContent.chartData && (
-                      <div className="mt-8 border border-slate-200/60 rounded-2xl p-5 bg-[#FAF8F5] space-y-4 shadow-sm">
-                        <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
-                          <Layers className="w-4 h-4 text-indigo-700" />
-                          <span>{lessonContent.chartData.title || "Visual Concept Comparison"}</span>
-                        </div>
-                        <div className="w-full overflow-hidden flex justify-center py-2">
-                          <svg className="w-full max-w-lg h-56" viewBox="0 0 500 240">
-                            <line x1="60" y1="20" x2="480" y2="20" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
-                            <line x1="60" y1="80" x2="480" y2="80" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
-                            <line x1="60" y1="140" x2="480" y2="140" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
-                            <line x1="60" y1="200" x2="480" y2="200" stroke="#CBD5E1" strokeWidth="1.5" />
+                  {/* Visual Concept SVG Chart */}
+                  {lessonContent.chartData && (
+                    <div className="mt-8 border border-slate-200/60 rounded-2xl p-5 bg-[#FAF8F5] space-y-4 shadow-sm">
+                      <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                        <Layers className="w-4 h-4 text-indigo-700" />
+                        <span>{lessonContent.chartData.title || "Visual Concept Comparison"}</span>
+                      </div>
+                      <div className="w-full overflow-hidden flex justify-center py-2">
+                        <svg className="w-full max-w-lg h-56" viewBox="0 0 500 240">
+                          <line x1="60" y1="20" x2="480" y2="20" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                          <line x1="60" y1="80" x2="480" y2="80" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                          <line x1="60" y1="140" x2="480" y2="140" stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                          <line x1="60" y1="200" x2="480" y2="200" stroke="#CBD5E1" strokeWidth="1.5" />
+                          
+                          <text x="45" y="25" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">100%</text>
+                          <text x="45" y="85" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">50%</text>
+                          <text x="45" y="145" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">25%</text>
+                          <text x="45" y="205" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">0%</text>
+
+                          {lessonContent.chartData.labels?.map((label: string, idx: number) => {
+                            const value = lessonContent.chartData.values?.[idx] || 0;
+                            const barWidth = 40;
+                            const numLabels = lessonContent.chartData.labels.length;
+                            const gap = (400 - (numLabels * barWidth)) / (numLabels + 1);
+                            const x = 60 + gap + idx * (barWidth + gap);
+                            const height = (value / 100) * 180;
+                            const y = 200 - height;
                             
-                            <text x="45" y="25" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">100%</text>
-                            <text x="45" y="85" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">50%</text>
-                            <text x="45" y="145" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">25%</text>
-                            <text x="45" y="205" className="fill-slate-400 font-mono text-[10px] font-bold" textAnchor="end">0%</text>
-
-                            {lessonContent.chartData.labels?.map((label: string, idx: number) => {
-                              const value = lessonContent.chartData.values?.[idx] || 0;
-                              const barWidth = 40;
-                              const numLabels = lessonContent.chartData.labels.length;
-                              const gap = (400 - (numLabels * barWidth)) / (numLabels + 1);
-                              const x = 60 + gap + idx * (barWidth + gap);
-                              const height = (value / 100) * 180;
-                              const y = 200 - height;
-                              
-                              return (
-                                <g key={idx} className="group cursor-pointer">
-                                  <rect
-                                    x={x}
-                                    y={y}
-                                    width={barWidth}
-                                    height={height}
-                                    rx="4"
-                                    className="fill-cyan-500 hover:fill-indigo-500 transition-colors duration-300"
-                                  />
-                                  <text
-                                    x={x + barWidth / 2}
-                                    y={y - 8}
-                                    className="fill-slate-700 font-black text-[10px]"
-                                    textAnchor="middle"
-                                  >
-                                    {value}%
-                                  </text>
-                                  <text
-                                    x={x + barWidth / 2}
-                                    y="222"
-                                    className="fill-slate-500 font-mono text-[9px] font-bold uppercase tracking-wider"
-                                    textAnchor="middle"
-                                  >
-                                    {label}
-                                  </text>
-                                </g>
-                              );
-                            })}
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Downloadable Source Materials */}
-                    {lessonContent.downloadableFiles && lessonContent.downloadableFiles.length > 0 && (
-                      <div className="mt-6 border border-slate-200/60 rounded-2xl p-5 bg-white space-y-4 shadow-sm">
-                        <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase tracking-wider">
-                          <Download className="w-4 h-4 text-cyan-600" />
-                          <span>Downloadable Lesson Materials</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                          {lessonContent.downloadableFiles.map((file: any, idx: number) => {
-                            const handleDownload = () => {
-                              const blob = new Blob([file.content], { type: "text/plain" });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = url;
-                              a.download = file.name;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            };
                             return (
-                              <div key={idx} className="flex items-center justify-between p-3.5 border border-slate-100 rounded-xl bg-[#FAF8F5] hover:bg-slate-50/50 transition-colors">
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold text-slate-800 truncate">{file.name}</p>
-                                  <p className="text-[9px] text-slate-400 font-mono mt-0.5">SOURCE CODE FILE</p>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={handleDownload}
-                                  className="h-8 px-3 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                              <g key={idx} className="group cursor-pointer">
+                                <rect
+                                  x={x}
+                                  y={y}
+                                  width={barWidth}
+                                  height={height}
+                                  rx="4"
+                                  className="fill-cyan-500 hover:fill-indigo-500 transition-colors duration-300"
+                                />
+                                <text
+                                  x={x + barWidth / 2}
+                                  y={y - 8}
+                                  className="fill-slate-700 font-black text-[10px]"
+                                  textAnchor="middle"
                                 >
-                                  <Download className="w-3 h-3" />
-                                  <span>Download</span>
-                                </Button>
-                              </div>
+                                  {value}%
+                                </text>
+                                <text
+                                  x={x + barWidth / 2}
+                                  y="222"
+                                  className="fill-slate-500 font-mono text-[9px] font-bold uppercase tracking-wider"
+                                  textAnchor="middle"
+                                >
+                                  {label}
+                                </text>
+                              </g>
                             );
                           })}
-                        </div>
+                        </svg>
                       </div>
-                    )}
-                    
-                    <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} topicId={topicId} moduleId={activeModule?.id || ""} />
-                  </div>
+                    </div>
+                  )}
 
-                  {/* Right side: Quiz Panel */}
-                  <div className="lg:col-span-2 mt-6 lg:mt-0">
-                    <PracticeModule 
-                      lessonContent={lessonContent} 
-                      onComplete={handleCompleteModule} 
-                    />
+                  {/* Downloadable Source Materials */}
+                  {lessonContent.downloadableFiles && lessonContent.downloadableFiles.length > 0 && (
+                    <div className="mt-6 border border-slate-200/60 rounded-2xl p-5 bg-white space-y-4 shadow-sm">
+                      <div className="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase tracking-wider">
+                        <Download className="w-4 h-4 text-cyan-600" />
+                        <span>Downloadable Lesson Materials</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                        {lessonContent.downloadableFiles.map((file: any, idx: number) => {
+                          const handleDownload = () => {
+                            const blob = new Blob([file.content], { type: "text/plain" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = file.name;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          };
+                          return (
+                            <div key={idx} className="flex items-center justify-between p-3.5 border border-slate-100 rounded-xl bg-[#FAF8F5] hover:bg-slate-50/50 transition-colors">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-800 truncate">{file.name}</p>
+                                <p className="text-[9px] text-slate-400 font-mono mt-0.5">SOURCE CODE FILE</p>
+                              </div>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleDownload}
+                                className="h-8 px-3 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>Download</span>
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <LearningAids topicTitle={topicName} moduleTitle={activeModule?.title || ""} topicId={topicId} moduleId={activeModule?.id || ""} />
+
+                  {/* Take Test Call to Action */}
+                  <div className="mt-10 border border-slate-200/60 rounded-3xl p-8 bg-gradient-to-br from-indigo-50 to-cyan-50/50 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+                    <div className="space-y-1.5 text-center md:text-left">
+                      <h4 className="text-base font-black text-slate-800 uppercase tracking-tight">Ready to verify your understanding?</h4>
+                      <p className="text-xs text-slate-600 font-semibold">Take a short quiz to test your comprehension and claim your XP reward.</p>
+                    </div>
+                    <Button
+                      onClick={() => setShowQuizModal(true)}
+                      className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold rounded-xl h-11 px-8 text-xs shadow-md active:scale-95 transition-transform cursor-pointer arbuttonchunky shrink-0"
+                    >
+                      Take Practice Test
+                    </Button>
                   </div>
                 </div>
               )
@@ -823,11 +898,158 @@ export default function AdaptiveLearningPage() {
 
               {/* Action buttons */}
               <Button 
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (nextModule) {
+                    handleStartModule(nextModule);
+                  }
+                }}
                 className="bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl h-11 px-8 text-xs w-full shadow-md active:scale-95 transition-transform cursor-pointer arbuttonchunky"
               >
-                Continue Curriculum
+                {nextModule ? `Start Next: ${nextModule.title}` : "Continue Curriculum"}
               </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Collapsible Study Notes Drawer */}
+      <AnimatePresence>
+        {showNotesDrawer && (
+          <>
+            <div 
+              className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs" 
+              onClick={async () => {
+                if (hasNotesChanged) {
+                  await saveModuleNotes(notesText);
+                  setHasNotesChanged(false);
+                }
+                setShowNotesDrawer(false);
+              }}
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-[#FDFBF7] border-l border-slate-200 shadow-2xl flex flex-col h-full"
+            >
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-[#FAF8F5]">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-550" />
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Module Study Notes</h3>
+                    <p className="text-[10px] text-slate-450 font-mono">Auto-saving in background</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={async () => {
+                    if (hasNotesChanged) {
+                      await saveModuleNotes(notesText);
+                      setHasNotesChanged(false);
+                    }
+                    setShowNotesDrawer(false);
+                  }}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-655 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-grow p-5 flex flex-col">
+                <textarea
+                  value={notesText}
+                  onChange={(e) => {
+                    setNotesText(e.target.value);
+                    setHasNotesChanged(true);
+                  }}
+                  placeholder="Type notes for this module here..."
+                  className="flex-grow w-full p-4 border border-slate-200 rounded-2xl bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-sans resize-none leading-relaxed min-h-[300px]"
+                />
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[10px] text-slate-455 font-mono">
+                <span>Notes are linked to this module.</span>
+                {hasNotesChanged ? (
+                  <span className="text-amber-500 animate-pulse">Unsaved changes...</span>
+                ) : (
+                  <span className="text-emerald-600">Synced to cloud ✓</span>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Code Compiler Modal */}
+      <AnimatePresence>
+        {showCompilerModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-5xl bg-[#18181B] border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col h-[90vh]"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Code2 className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">Interactive Code Sandbox</h3>
+                    <p className="text-[10px] text-slate-400 font-mono">Select languages and run code client-side</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowCompilerModal(false)}
+                  className="p-1.5 hover:bg-zinc-800 rounded-lg text-slate-405 hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-5">
+                <CodeCompiler />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Quiz Modal Overlay */}
+      <AnimatePresence>
+        {showQuizModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-xl bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-indigo-500" />
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Module Comprehension Test</h3>
+                    <p className="text-[10px] text-slate-450 font-mono">Pass to claim module completion</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowQuizModal(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-655 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-5">
+                <PracticeModule 
+                  lessonContent={lessonContent} 
+                  onComplete={async (stats) => {
+                    await handleCompleteModule(stats);
+                    setShowQuizModal(false);
+                  }} 
+                />
+              </div>
             </motion.div>
           </div>
         )}
