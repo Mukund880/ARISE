@@ -123,7 +123,7 @@ export default function AdaptiveLearningPage() {
     
     try {
       if (!user) throw new Error("Not authenticated");
-      const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", module.id);
+      const moduleContentRef = doc(db, "users", user.uid, "topics", topicId, "modules", String(module.id));
       const moduleContentSnap = await getDoc(moduleContentRef);
       
       if (moduleContentSnap.exists()) {
